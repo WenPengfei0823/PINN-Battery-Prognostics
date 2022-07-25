@@ -360,62 +360,12 @@ class CapacityNN(nn.Module):
             layers=layers
         )
 
-    def Net_U0(self, x):
-        s = x[:, :, 0: self.inputs_dim - 1]
-        t = x[:, :, self.inputs_dim - 1:]
-
-        s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
-                                          std=self.scaler_inputs[1][0: self.inputs_dim - 1])
-        t.requires_grad_(True)
-        t_norm, _, _ = standardize_tensor(t, mode='transform', mean=self.scaler_inputs[0][self.inputs_dim - 1:],
-                                          std=self.scaler_inputs[1][self.inputs_dim - 1:])
-
-        U = self.neural_net(torch.cat((s_norm, t_norm), dim=2))
-        dU_dt = fwd_gradients(U, t)
-        U_2D = U.contiguous().view((-1, self.outputs_dim))
-        F = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity)
-        F_2D = F.contiguous().view((-1, self.outputs_dim))
-        U0_2D = U_2D - self.dt * torch.matmul(F_2D, self.params_IRK['alpha'].T)
-        U0 = U0_2D.contiguous().view((-1, self.seq_len, self.outputs_dim))
-        dU0_dt = fwd_gradients(U0, t)
-        return U0, dU0_dt
-
-    def Net_U1(self, x):
-        s = x[:, :, 0: self.inputs_dim - 1]
-        t = x[:, :, self.inputs_dim - 1:]
-
-        s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
-                                          std=self.scaler_inputs[1][0: self.inputs_dim - 1])
-        t.requires_grad_(True)
-        t_norm, _, _ = standardize_tensor(t, mode='transform', mean=self.scaler_inputs[0][self.inputs_dim - 1:],
-                                          std=self.scaler_inputs[1][self.inputs_dim - 1:])
-
-        U = self.neural_net(torch.cat((s_norm, t_norm), dim=2))
-        dU_dt = fwd_gradients(U, t)
-        U_2D = U.contiguous().view((-1, self.outputs_dim))
-        F = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity)
-        F_2D = F.contiguous().view((-1, self.outputs_dim))
-        U1_2D = U_2D + self.dt * torch.matmul(F_2D, (self.params_IRK['beta'] - self.params_IRK['alpha']).T)
-        U1 = U1_2D.contiguous().view((-1, self.seq_len, self.outputs_dim))
-        dU1_dt = fwd_gradients(U1, t)
-        return U1, dU1_dt
-
     def forward(self, inputs):
         self.growth_rate = torch.exp(-self.log_growth_rate)
         self.carrying_capacity = self.lb_carrying_capacity + (self.ub_carrying_capacity - self.lb_carrying_capacity) * \
                                  torch.sigmoid(self.log_carrying_capacity)
         self.initial_loss = self.lb_initial_loss + (self.ub_initial_loss - self.lb_initial_loss) * \
                             torch.sigmoid(self.log_initial_loss)
-        # self.growth_rate = 0.0045
-        # self.carrying_capacity = torch.tensor(1.)
-        # self.initial_loss = 0.0351
-        # self.growth_rate = torch.exp(-self.log_growth_rate)
-        # self.carrying_capacity = self.lb_carrying_capacity + (self.ub_carrying_capacity - self.lb_carrying_capacity) / 2 \
-        #                          + (self.ub_carrying_capacity - self.lb_carrying_capacity) / 2 \
-        #                          * torch.tanh(self.log_carrying_capacity)
-        # self.initial_loss = self.lb_initial_loss + (self.ub_initial_loss - self.lb_initial_loss) / 2 \
-        #                          + (self.ub_initial_loss - self.lb_initial_loss) / 2 \
-        #                          * torch.tanh(self.log_initial_loss)
 
         s = inputs[:, :, 0: self.inputs_dim - 1]
         t = inputs[:, :, self.inputs_dim - 1:]
@@ -428,7 +378,6 @@ class CapacityNN(nn.Module):
         t_norm.requires_grad_(True)
 
         U_norm = self.neural_net(x=torch.cat((s_norm, t_norm), dim=2))
-        # U_norm = self.neural_net(t_norm)
 
         U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
 
@@ -602,17 +551,23 @@ class My_loss(nn.Module):
 def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, targets_val,
           model, optimizer, scheduler, criterion, log_sigma_u, log_sigma_f):
     num_period = int(num_slices_train / batch_size)
-    loss_epoch_train = torch.zeros(num_epoch)
-    loss_epoch_val = torch.zeros(num_epoch)
-    growth_rate_epoch = torch.zeros(num_epoch)
-    carrying_capacity_epoch = torch.zeros(num_epoch)
-    initial_loss_epoch = torch.zeros(num_epoch)
+    results_epoch = dict()
+    results_epoch['loss_train'] = torch.zeros(num_epoch)
+    results_epoch['loss_val'] = torch.zeros(num_epoch)
+    results_epoch['growth_rate'] = torch.zeros(num_epoch)
+    results_epoch['carrying_capacity'] = torch.zeros(num_epoch)
+    results_epoch['initial_loss'] = torch.zeros(num_epoch)
+    results_epoch['var_U'] = torch.zeros(num_epoch)
+    results_epoch['var_F'] = torch.zeros(num_epoch)
     model.train()
     for epoch in range(num_epoch):
-        loss_period_train = torch.zeros(num_period)
-        # growth_rate_period = torch.zeros(num_period)
-        # carrying_capacity_period = torch.zeros(num_period)
-        # initial_loss_period = torch.zeros(num_period)
+        results_period = dict()
+        results_period['loss_train'] = torch.zeros(num_period)
+        results_period['growth_rate'] = torch.zeros(num_period)
+        results_period['carrying_capacity'] = torch.zeros(num_period)
+        results_period['initial_loss'] = torch.zeros(num_period)
+        results_period['var_U'] = torch.zeros(num_period)
+        results_period['var_F'] = torch.zeros(num_period)
         with torch.backends.cudnn.flags(enabled=False):
             for period, (inputs_train_batch, targets_train_batch) in enumerate(train_loader):
                 log_var_u = log_sigma_u
@@ -629,20 +584,24 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
                 )
                 loss.backward()
                 optimizer.step()
-                loss_period_train[period] = criterion.loss_U.detach()
-                # growth_rate_period[period] = model.growth_rate.detach()
-                # carrying_capacity_period[period] = model.carrying_capacity.detach()
-                # initial_loss_period[period] = model.initial_loss.detach()
+                results_period['loss_train'][period] = criterion.loss_U.detach()
+                results_period['growth_rate'][period] = model.growth_rate.detach()
+                results_period['carrying_capacity'][period] = model.carrying_capacity.detach()
+                results_period['initial_loss'][period] = model.initial_loss.detach()
+                results_period['var_U'][period] = torch.exp(-log_var_u).detach()
+                results_period['var_F'][period] = torch.exp(-log_var_f).detach()
 
                 if (epoch + 1) % 1 == 0 and (period + 1) % 1 == 0:  # 每 100 次输出结果
                     print(
                         'Epoch: {}, Period: {}, Loss: {:.5f}, Loss_U: {:.5f}, Loss_F: {:.5f}, Loss_F_t: {:.5f}'.format(
                             epoch + 1, period + 1, loss, criterion.loss_U, criterion.loss_F, criterion.loss_F_t))
 
-        loss_epoch_train[epoch] = torch.mean(loss_period_train)
-        # growth_rate_epoch[epoch] = torch.mean(growth_rate_period)
-        # carrying_capacity_epoch[epoch] = torch.mean(carrying_capacity_period)
-        # initial_loss_epoch[epoch] = torch.mean(initial_loss_period)
+        results_epoch['loss_train'][epoch] = torch.mean(results_period['loss_train'])
+        results_epoch['growth_rate'][epoch] = torch.mean(results_period['growth_rate'])
+        results_epoch['carrying_capacity'][epoch] = torch.mean(results_period['carrying_capacity'])
+        results_epoch['initial_loss'][epoch] = torch.mean(results_period['initial_loss'])
+        results_epoch['var_U'][epoch] = torch.mean(results_period['var_U'])
+        results_epoch['var_F'][epoch] = torch.mean(results_period['var_F'])
 
         model.eval()
         U_pred_val, F_pred_val, F_t_pred_val = model(inputs=inputs_val)
@@ -655,9 +614,9 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
             log_var_f=log_var_f
         )
         scheduler.step()
-        loss_epoch_val[epoch] = criterion.loss_U.detach()
+        results_epoch['loss_val'][epoch] = criterion.loss_U.detach()
 
-    return model, loss_epoch_train, loss_epoch_val, growth_rate_epoch, carrying_capacity_epoch, initial_loss_epoch
+    return model, results_epoch
 
 
 pass

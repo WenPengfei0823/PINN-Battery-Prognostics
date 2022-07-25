@@ -23,10 +23,12 @@ data = func.SeversonBattery(addr, seq_len=seq_len)
 
 params_PDE_all = np.zeros((data.num_cells, 3))
 
-num_rounds = 1
-metric_rounds_train = np.zeros(num_rounds)
-metric_rounds_val = np.zeros(num_rounds)
-metric_rounds_test = np.zeros(num_rounds)
+num_rounds = 100
+
+metric_rounds = dict()
+metric_rounds['train'] = np.zeros(num_rounds)
+metric_rounds['val'] = np.zeros(num_rounds)
+metric_rounds['test'] = np.zeros(num_rounds)
 
 for round in range(num_rounds):
     inputs_dict, targets_dict = func.create_chosen_cells(
@@ -45,8 +47,8 @@ for round in range(num_rounds):
     inputs_dim = inputs_train.shape[2]
     outputs_dim = 1
     batch_size = inputs_train.shape[0]
-    num_epoch = 1
-    layers = [20, 20, 20, 20, 20, 20, 20, 20]
+    num_epoch = 1000
+    layers = [20, 20]
 
     _, mean_inputs_train, std_inputs_train = func.standardize_tensor(inputs_train, mode='fit')
     _, mean_targets_train, std_targets_train = func.standardize_tensor(targets_train, mode='fit')
@@ -79,7 +81,7 @@ for round in range(num_rounds):
     params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + model.params_PDE)
     optimizer = optim.Adam(params, lr=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=25000, gamma=0.1)
-    model, loss_epoch_train, loss_epoch_val, growth_rate_epoch, carrying_capacity_epoch, initial_loss_epoch = func.train(
+    model, results_epoch = func.train(
         num_epoch=num_epoch,
         batch_size=batch_size,
         train_loader=train_loader,
@@ -111,16 +113,18 @@ for round in range(num_rounds):
     targets_test = 1. - targets_test
     RMSPE_test = torch.sqrt(torch.mean(((U_pred_test - targets_test) / targets_test) ** 2))
 
-    metric_rounds_train[round] = RMSPE_train.detach().cpu().numpy()
-    metric_rounds_val[round] = RMSPE_val.detach().cpu().numpy()
-    metric_rounds_test[round] = RMSPE_test.detach().cpu().numpy()
+    metric_rounds['train'][round] = RMSPE_train.detach().cpu().numpy()
+    metric_rounds['val'][round] = RMSPE_val.detach().cpu().numpy()
+    metric_rounds['test'][round] = RMSPE_test.detach().cpu().numpy()
 
-metric_mean_train = np.mean(metric_rounds_train)
-metric_mean_val = np.mean(metric_rounds_val)
-metric_mean_test = np.mean(metric_rounds_test)
-metric_std_train = np.std(metric_rounds_train)
-metric_std_val = np.std(metric_rounds_val)
-metric_std_test = np.std(metric_rounds_test)
+    torch.save(metric_rounds, 'metric_rounds.pth')
+
+metric_mean_train = np.mean(metric_rounds['train'])
+metric_mean_val = np.mean(metric_rounds['val'])
+metric_mean_test = np.mean(metric_rounds['test'])
+metric_std_train = np.std(metric_rounds['train'])
+metric_std_val = np.std(metric_rounds['val'])
+metric_std_test = np.std(metric_rounds['test'])
 
 torch.save(model, 'CapacityNN.pth')
 pass
