@@ -303,7 +303,7 @@ class Neural_Net(nn.Module):
             self.layers.append(nn.Tanh())
         elif activation == 'Sin':
             self.layers.append(Sin())
-        self.layers.append(nn.Dropout(p=0.5))
+        # self.layers.append(nn.Dropout(p=0.1))
         for l in range(len(layers) - 1):
             self.layers.append(nn.Linear(in_features=layers[l], out_features=layers[l + 1]))
             nn.init.xavier_normal_(self.layers[-1].weight)
@@ -312,10 +312,10 @@ class Neural_Net(nn.Module):
                 self.layers.append(nn.Tanh())
             elif activation == 'Sin':
                 self.layers.append(Sin())
-            self.layers.append(nn.Dropout(p=0.5))
+            # self.layers.append(nn.Dropout(p=0.1))
         self.layers.append(nn.Linear(in_features=layers[l + 1], out_features=outputs_dim))
         nn.init.xavier_normal_(self.layers[-1].weight)
-        self.layers.append(nn.Dropout(p=0.5))
+        # self.layers.append(nn.Dropout(p=0.1))
         # self.layers.append(nn.Sigmoid())
         self.NN = nn.Sequential(*self.layers)
 
@@ -390,16 +390,8 @@ class CapacityNN(nn.Module):
             only_inputs=True
         )[0]
 
-        U_tt = torch.autograd.grad(
-            U_t, t,
-            grad_outputs=grad_outputs,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True
-        )[0]
-
         U_s = torch.autograd.grad(
-            U, s,
+            U, s_norm,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -412,11 +404,11 @@ class CapacityNN(nn.Module):
         # F = (dU_dt_pred - Verhulst_pred) / torch.where(torch.abs(Verhulst_pred) > tolerance, Verhulst_pred,
         #                                                     tolerance)
 
-        # G = self.dynamicNN(x=U_norm)
+        # G = self.dynamicNN(x=t_norm)
         # G = self.dynamicNN(x=torch.cat((s_norm, t_norm, U_norm), dim=2))
         G = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity, C=self.initial_loss)
         G_t = torch.autograd.grad(
-            G, t,
+            G, t_norm,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -424,7 +416,13 @@ class CapacityNN(nn.Module):
         )[0]
 
         F = U_t - G
-        F_t = U_tt - G_t
+        F_t = torch.autograd.grad(
+            F, t_norm,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
         # self.tolerance = 1e-8 * torch.ones_like(U_t)
         # F = (U_t - G) / torch.where(torch.abs(U_t) > self.tolerance, U_t, self.tolerance)
         # F_t = (U_tt - G_t) / torch.where(torch.abs(U_tt) > self.tolerance, U_tt, self.tolerance)
@@ -517,7 +515,7 @@ class My_loss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, outputs_U, targets_U, outputs_F, outputs_F_t, log_var_u, log_var_f):
+    def forward(self, outputs_U, targets_U, outputs_F, outputs_F_t, log_var_u, log_var_f, log_var_f_t):
         # loss_h = torch.sqrt(torch.mean((outputs_h - targets_h) ** 2))
         # loss_y = torch.sqrt(torch.mean((outputs_y - targets_y)**2))
         # loss_e = torch.sqrt(torch.mean((outputs_e)**2))
@@ -527,19 +525,21 @@ class My_loss(nn.Module):
         # loss_U = torch.mean(torch.abs((outputs_U - targets_U) / targets_U))
         # loss_U = torch.sqrt(torch.mean((outputs_U - targets_U) ** 2))
         # loss_U = torch.sqrt(torch.mean((log_var_u * (outputs_U - targets_U)) ** 2))
-        loss_U = torch.sum((outputs_U - targets_U) ** 2)
+        loss_U = torch.mean((outputs_U - targets_U) ** 2)
 
         # loss_F = torch.sqrt(torch.mean((outputs_F) ** 2))
         # loss_F = torch.mean(torch.abs(outputs_F))
-        loss_F = torch.sum(outputs_F ** 2)
+        loss_F = torch.mean(outputs_F ** 2)
 
-        loss_F_t = torch.sum((outputs_F_t) ** 2)
+        loss_F_t = torch.mean((outputs_F_t) ** 2)
         # loss_F_t = torch.mean(torch.abs(outputs_F_t))
 
         # loss = loss_U / loss_U.detach() + loss_F / loss_F.detach()
         # loss = 20*max(loss_U - 0.0058, 0) + loss_F
-        # loss = loss_U + 1e-1*loss_F
-        loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + log_var_u + log_var_f
+        loss = loss_U
+        # loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + log_var_u + log_var_f
+        # loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + torch.exp(-log_var_f_t) * loss_F_t + \
+        #        log_var_u + log_var_f + log_var_f_t
         # print(' Loss_U: {:.5f}, Loss_F: {:.5f},'.format(loss_U, loss_F))
 
         self.loss_U = loss_U
@@ -548,8 +548,11 @@ class My_loss(nn.Module):
         return loss
 
 
+
+
+
 def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, targets_val,
-          model, optimizer, scheduler, criterion, log_sigma_u, log_sigma_f):
+          model, optimizer, scheduler, criterion, log_sigma_u, log_sigma_f, log_sigma_f_t):
     num_period = int(num_slices_train / batch_size)
     results_epoch = dict()
     results_epoch['loss_train'] = torch.zeros(num_epoch)
@@ -559,8 +562,9 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
     results_epoch['initial_loss'] = torch.zeros(num_epoch)
     results_epoch['var_U'] = torch.zeros(num_epoch)
     results_epoch['var_F'] = torch.zeros(num_epoch)
-    model.train()
+
     for epoch in range(num_epoch):
+        model.train()
         results_period = dict()
         results_period['loss_train'] = torch.zeros(num_period)
         results_period['growth_rate'] = torch.zeros(num_period)
@@ -572,6 +576,7 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
             for period, (inputs_train_batch, targets_train_batch) in enumerate(train_loader):
                 log_var_u = log_sigma_u
                 log_var_f = log_sigma_f
+                log_var_f_t = log_sigma_f_t
                 optimizer.zero_grad()
                 U_pred_train, F_pred_train, F_t_pred_train = model(inputs=inputs_train_batch)
                 loss = criterion(
@@ -580,7 +585,8 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
                     outputs_F=F_pred_train,
                     outputs_F_t=F_t_pred_train,
                     log_var_u=log_var_u,
-                    log_var_f=log_var_f
+                    log_var_f=log_var_f,
+                    log_var_f_t=log_var_f_t
                 )
                 loss.backward()
                 optimizer.step()
@@ -611,10 +617,33 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
             outputs_F=F_pred_val,
             outputs_F_t=F_t_pred_val,
             log_var_u=log_var_u,
-            log_var_f=log_var_f
+            log_var_f=log_var_f,
+            log_var_f_t=log_var_f_t
         )
         scheduler.step()
         results_epoch['loss_val'][epoch] = criterion.loss_U.detach()
+
+    # optimizer = optim.LBFGS(model.parameters())
+    # model.train()
+    # def closure():
+    #     log_var_u = log_sigma_u
+    #     log_var_f = log_sigma_f
+    #     optimizer.zero_grad()
+    #     U_pred_train, F_pred_train, F_t_pred_train = model(inputs=inputs_train_batch)
+    #     loss = criterion(
+    #         outputs_U=U_pred_train,
+    #         targets_U=targets_train_batch,
+    #         outputs_F=F_pred_train,
+    #         outputs_F_t=F_t_pred_train,
+    #         log_var_u=log_var_u,
+    #         log_var_f=log_var_f
+    #     )
+    #     loss.backward()
+    #     print('BFGS Loss: {:.5f}'.format(loss))
+    #     return loss
+    #
+    # with torch.backends.cudnn.flags(enabled=False):
+    #     optimizer.step(closure)
 
     return model, results_epoch
 

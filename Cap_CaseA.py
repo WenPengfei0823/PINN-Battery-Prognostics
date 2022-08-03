@@ -23,7 +23,7 @@ data = func.SeversonBattery(addr, seq_len=seq_len)
 
 params_PDE_all = np.zeros((data.num_cells, 3))
 
-num_rounds = 100
+num_rounds = 5
 
 metric_rounds = dict()
 metric_rounds['train'] = np.zeros(num_rounds)
@@ -46,9 +46,9 @@ for round in range(num_rounds):
 
     inputs_dim = inputs_train.shape[2]
     outputs_dim = 1
-    batch_size = inputs_train.shape[0]
+    batch_size = 256
     num_epoch = 1000
-    layers = [20, 20]
+    layers = [16, 16, 16, 16, 16, 16, 16, 16]
 
     _, mean_inputs_train, std_inputs_train = func.standardize_tensor(inputs_train, mode='fit')
     _, mean_targets_train, std_targets_train = func.standardize_tensor(targets_train, mode='fit')
@@ -73,12 +73,14 @@ for round in range(num_rounds):
 
     log_sigma_u = torch.randn((), requires_grad=True)
     log_sigma_f = torch.randn((), requires_grad=True)
+    log_sigma_f_t = torch.randn((), requires_grad=True)
     log_var_u = log_sigma_u.to(device)
     log_var_f = log_sigma_f.to(device)
+    log_var_f_t = log_sigma_f_t.to(device)
 
     criterion = func.My_loss()
 
-    params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + model.params_PDE)
+    params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t] + model.params_PDE)
     optimizer = optim.Adam(params, lr=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=25000, gamma=0.1)
     model, results_epoch = func.train(
@@ -86,14 +88,15 @@ for round in range(num_rounds):
         batch_size=batch_size,
         train_loader=train_loader,
         num_slices_train=inputs_train.shape[0],
-        inputs_val=inputs_test,
-        targets_val=targets_test,
+        inputs_val=inputs_val,
+        targets_val=targets_val,
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
         criterion=criterion,
         log_sigma_u=log_sigma_u,
-        log_sigma_f=log_sigma_f
+        log_sigma_f=log_sigma_f,
+        log_sigma_f_t=log_sigma_f_t
     )
 
     model.eval()
