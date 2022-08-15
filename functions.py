@@ -355,7 +355,7 @@ class CapacityNN(nn.Module):
 
         self.dynamicNN = Neural_Net(
             seq_len=self.seq_len,
-            inputs_dim=1,
+            inputs_dim=2*self.inputs_dim,
             outputs_dim=1,
             layers=layers
         )
@@ -404,16 +404,9 @@ class CapacityNN(nn.Module):
         # F = (dU_dt_pred - Verhulst_pred) / torch.where(torch.abs(Verhulst_pred) > tolerance, Verhulst_pred,
         #                                                     tolerance)
 
-        # G = self.dynamicNN(x=t_norm)
-        # G = self.dynamicNN(x=torch.cat((s_norm, t_norm, U_norm), dim=2))
-        G = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity, C=self.initial_loss)
-        G_t = torch.autograd.grad(
-            G, t_norm,
-            grad_outputs=grad_outputs,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True
-        )[0]
+        # G = self.dynamicNN(x=U_s)
+        G = self.dynamicNN(x=torch.cat((s_norm, t_norm, U_norm, U_s), dim=2))
+        # G = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity, C=self.initial_loss)
 
         F = U_t - G
         F_t = torch.autograd.grad(
@@ -525,21 +518,21 @@ class My_loss(nn.Module):
         # loss_U = torch.mean(torch.abs((outputs_U - targets_U) / targets_U))
         # loss_U = torch.sqrt(torch.mean((outputs_U - targets_U) ** 2))
         # loss_U = torch.sqrt(torch.mean((log_var_u * (outputs_U - targets_U)) ** 2))
-        loss_U = torch.mean((outputs_U - targets_U) ** 2)
+        loss_U = torch.sum((outputs_U - targets_U) ** 2)
 
         # loss_F = torch.sqrt(torch.mean((outputs_F) ** 2))
         # loss_F = torch.mean(torch.abs(outputs_F))
-        loss_F = torch.mean(outputs_F ** 2)
+        loss_F = torch.sum(outputs_F ** 2)
 
-        loss_F_t = torch.mean((outputs_F_t) ** 2)
+        loss_F_t = torch.sum((outputs_F_t) ** 2)
         # loss_F_t = torch.mean(torch.abs(outputs_F_t))
 
         # loss = loss_U / loss_U.detach() + loss_F / loss_F.detach()
         # loss = 20*max(loss_U - 0.0058, 0) + loss_F
-        loss = loss_U
+        # loss = loss_U
         # loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + log_var_u + log_var_f
-        # loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + torch.exp(-log_var_f_t) * loss_F_t + \
-        #        log_var_u + log_var_f + log_var_f_t
+        loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + torch.exp(-log_var_f_t) * loss_F_t + \
+               log_var_u + log_var_f + log_var_f_t
         # print(' Loss_U: {:.5f}, Loss_F: {:.5f},'.format(loss_U, loss_F))
 
         self.loss_U = loss_U
