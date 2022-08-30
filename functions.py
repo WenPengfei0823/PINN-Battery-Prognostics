@@ -303,7 +303,7 @@ class Neural_Net(nn.Module):
             self.layers.append(nn.Tanh())
         elif activation == 'Sin':
             self.layers.append(Sin())
-        # self.layers.append(nn.Dropout(p=0.1))
+        self.layers.append(nn.Dropout(p=0.1))
         for l in range(len(layers) - 1):
             self.layers.append(nn.Linear(in_features=layers[l], out_features=layers[l + 1]))
             nn.init.xavier_normal_(self.layers[-1].weight)
@@ -312,7 +312,7 @@ class Neural_Net(nn.Module):
                 self.layers.append(nn.Tanh())
             elif activation == 'Sin':
                 self.layers.append(Sin())
-            # self.layers.append(nn.Dropout(p=0.1))
+            self.layers.append(nn.Dropout(p=0.1))
         self.layers.append(nn.Linear(in_features=layers[l + 1], out_features=outputs_dim))
         nn.init.xavier_normal_(self.layers[-1].weight)
         # self.layers.append(nn.Dropout(p=0.1))
@@ -355,7 +355,7 @@ class CapacityNN(nn.Module):
 
         self.dynamicNN = Neural_Net(
             seq_len=self.seq_len,
-            inputs_dim=2*self.inputs_dim,
+            inputs_dim=2*(self.inputs_dim),
             outputs_dim=1,
             layers=layers
         )
@@ -383,7 +383,7 @@ class CapacityNN(nn.Module):
 
         grad_outputs = torch.ones_like(U)
         U_t = torch.autograd.grad(
-            U, t_norm,
+            U, t,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -421,70 +421,6 @@ class CapacityNN(nn.Module):
         # F_t = (U_tt - G_t) / torch.where(torch.abs(U_tt) > self.tolerance, U_tt, self.tolerance)
 
         self.U_t = U_t
-        return U, F, F_t
-
-
-class RULPINN(nn.Module):
-    def __init__(self, seq_len, inputs_dim, outputs_dim, layers, scaler_inputs, scaler_targets):
-        super(RULPINN, self).__init__()
-        self.seq_len, self.inputs_dim, self.outputs_dim = seq_len, inputs_dim, outputs_dim
-        self.scaler_inputs, self.scaler_targets = scaler_inputs, scaler_targets
-
-        self.neural_net = Neural_Net(
-            seq_len=self.seq_len,
-            inputs_dim=self.inputs_dim,
-            outputs_dim=self.outputs_dim,
-            layers=layers
-        )
-
-        self.dynamicNN = Neural_Net(
-            seq_len=self.seq_len,
-            inputs_dim=self.inputs_dim + 1,
-            outputs_dim=1,
-            layers=layers
-        )
-
-    def forward(self, inputs):
-        s = inputs[:, :, 0: self.inputs_dim - 1]
-        t = inputs[:, :, self.inputs_dim - 1:]
-        s.requires_grad_(True)
-        s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
-                                          std=self.scaler_inputs[1][0: self.inputs_dim - 1])
-        t.requires_grad_(True)
-        t_norm, _, _ = standardize_tensor(t, mode='transform', mean=self.scaler_inputs[0][self.inputs_dim - 1:],
-                                          std=self.scaler_inputs[1][self.inputs_dim - 1:])
-
-        U_norm = self.neural_net(x=torch.cat((s_norm, t_norm), dim=2))
-        # U_norm = self.neural_net(t_norm)
-
-        U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
-        # U = U_norm
-
-        grad_outputs = torch.ones_like(U)
-        U_t = torch.autograd.grad(
-            U, t,
-            grad_outputs=grad_outputs,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True
-        )[0]
-
-        U_s = torch.autograd.grad(
-            U, s,
-            grad_outputs=grad_outputs,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True
-        )[0]
-
-        G = self.dynamicNN(x=torch.cat((s_norm, t_norm, U_norm), dim=2))
-
-        F = U_t - G
-        F_t = torch.zeros_like(U)
-        # self.tolerance = 1e-8 * torch.ones_like(U_t)
-        # F = (U_t - G) / torch.where(torch.abs(U_t) > self.tolerance, U_t, self.tolerance)
-        # F_t = (U_tt - G_t) / torch.where(torch.abs(U_tt) > self.tolerance, U_tt, self.tolerance)
-
         return U, F, F_t
 
 

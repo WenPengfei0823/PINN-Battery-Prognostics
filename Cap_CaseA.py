@@ -37,9 +37,9 @@ for round in range(num_rounds):
         idx_cells_test=[124],
         perc_val=perc_val
     )
-    inputs_train = inputs_dict['train'].to(device)
-    inputs_val = inputs_dict['val'].to(device)
-    inputs_test = inputs_dict['test'].to(device)
+    inputs_train = inputs_dict['train'][:, :, [0, 1, 2, -1]].to(device)
+    inputs_val = inputs_dict['val'][:, :, [0, 1, 2, -1]].to(device)
+    inputs_test = inputs_dict['test'][:, :, [0, 1, 2, -1]].to(device)
     targets_train = targets_dict['train'][:, :, 0:1].to(device)
     targets_val = targets_dict['val'][:, :, 0:1].to(device)
     targets_test = targets_dict['test'][:, :, 0:1].to(device)
