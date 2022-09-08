@@ -11,8 +11,8 @@ import functions as func
 
 
 
-device = torch.device("cuda")
-# device = torch.device("cpu")
+# device = torch.device("cuda")
+device = torch.device("cpu")
 
 seq_len = 1
 perc_val = 0.2
