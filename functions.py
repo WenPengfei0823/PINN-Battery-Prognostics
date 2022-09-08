@@ -296,27 +296,32 @@ class Neural_Net(nn.Module):
         self.seq_len, self.inputs_dim, self.outputs_dim = seq_len, inputs_dim, outputs_dim
 
         self.layers = []
+
         self.layers.append(nn.Linear(in_features=inputs_dim, out_features=layers[0]))
         nn.init.xavier_normal_(self.layers[-1].weight)
-        # self.layers.append(nn.BatchNorm1d(num_features=layers[0]))
+
+
         if activation == 'Tanh':
             self.layers.append(nn.Tanh())
         elif activation == 'Sin':
             self.layers.append(Sin())
+        # self.layers.append(nn.BatchNorm1d(num_features=layers[0]))
         self.layers.append(nn.Dropout(p=0.1))
+
         for l in range(len(layers) - 1):
             self.layers.append(nn.Linear(in_features=layers[l], out_features=layers[l + 1]))
             nn.init.xavier_normal_(self.layers[-1].weight)
-            # self.layers.append(nn.BatchNorm1d(num_features=layers[l+1]))
+
             if activation == 'Tanh':
                 self.layers.append(nn.Tanh())
             elif activation == 'Sin':
                 self.layers.append(Sin())
+            # self.layers.append(nn.BatchNorm1d(num_features=layers[l + 1]))
             self.layers.append(nn.Dropout(p=0.1))
+
         self.layers.append(nn.Linear(in_features=layers[l + 1], out_features=outputs_dim))
         nn.init.xavier_normal_(self.layers[-1].weight)
-        # self.layers.append(nn.Dropout(p=0.1))
-        # self.layers.append(nn.Sigmoid())
+
         self.NN = nn.Sequential(*self.layers)
 
     def forward(self, x):
@@ -336,37 +341,43 @@ class CapacityNN(nn.Module):
         self.scaler_inputs, self.scaler_targets = scaler_inputs, scaler_targets
         # self.dt, self.params_IRK = dt, params_IRK
 
-        self.log_growth_rate = torch.randn((), requires_grad=True)
-        self.log_carrying_capacity = torch.randn((), requires_grad=True)
-        self.lb_carrying_capacity = 0.2
-        self.ub_carrying_capacity = 1
-        self.log_initial_loss = torch.randn((), requires_grad=True)
-        self.lb_initial_loss = 0
-        self.ub_initial_loss = 1e-1
+        # self.log_p_r = torch.nn.Parameter(torch.randn(()))
+        # self.log_p_K = torch.nn.Parameter(torch.randn(()))
+        # self.lb_p_K = 0.2
+        # self.ub_p_K = 1
+        # self.log_p_C = torch.nn.Parameter(torch.randn(()))
+        # self.lb_p_C = 0
+        # self.ub_p_C = 1e-1
+        #
+        # self.params_PDE = [self.log_p_r] + [self.log_p_K] + [self.log_p_C]
 
-        self.params_PDE = [self.log_growth_rate] + [self.log_carrying_capacity] + [self.log_initial_loss]
-
-        self.neural_net = Neural_Net(
+        self.surrogateNN = Neural_Net(
             seq_len=self.seq_len,
             inputs_dim=self.inputs_dim,
             outputs_dim=self.outputs_dim,
             layers=layers
         )
 
-        self.dynamicNN = Neural_Net(
-            seq_len=self.seq_len,
-            inputs_dim=2*(self.inputs_dim),
-            outputs_dim=1,
-            layers=layers
-        )
+        # self.dynamicalNN = Neural_Net(
+        #     seq_len=self.seq_len,
+        #     inputs_dim=2*(self.inputs_dim),
+        #     outputs_dim=1,
+        #     layers=layers
+        # )
+
+    @property
+    def p_r(self):
+        return torch.exp(-self.log_p_r)
+
+    @property
+    def p_K(self):
+        return self.lb_p_K + (self.ub_p_K - self.lb_p_K) * torch.sigmoid(self.log_p_K)
+
+    @property
+    def p_C(self):
+        return self.lb_p_C + (self.ub_p_C - self.lb_p_C) * torch.sigmoid(self.log_p_C)
 
     def forward(self, inputs):
-        self.growth_rate = torch.exp(-self.log_growth_rate)
-        self.carrying_capacity = self.lb_carrying_capacity + (self.ub_carrying_capacity - self.lb_carrying_capacity) * \
-                                 torch.sigmoid(self.log_carrying_capacity)
-        self.initial_loss = self.lb_initial_loss + (self.ub_initial_loss - self.lb_initial_loss) * \
-                            torch.sigmoid(self.log_initial_loss)
-
         s = inputs[:, :, 0: self.inputs_dim - 1]
         t = inputs[:, :, self.inputs_dim - 1:]
         s.requires_grad_(True)
@@ -377,13 +388,13 @@ class CapacityNN(nn.Module):
                                           std=self.scaler_inputs[1][self.inputs_dim - 1:])
         t_norm.requires_grad_(True)
 
-        U_norm = self.neural_net(x=torch.cat((s_norm, t_norm), dim=2))
+        U_norm = self.surrogateNN(x=torch.cat((s_norm, t_norm), dim=2))
 
         U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
 
         grad_outputs = torch.ones_like(U)
         U_t = torch.autograd.grad(
-            U, t,
+            U_norm, t_norm,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -391,22 +402,124 @@ class CapacityNN(nn.Module):
         )[0]
 
         U_s = torch.autograd.grad(
-            U, s_norm,
+            U_norm, s_norm,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
             only_inputs=True
         )[0]
 
-        # # F = dU_dt_pred - Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity, C=self.initial_loss)
-        # Verhulst_pred = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity, C=self.initial_loss)
-        # tolerance = 1e-8 * torch.ones_like(dU_dt_pred)
-        # F = (dU_dt_pred - Verhulst_pred) / torch.where(torch.abs(Verhulst_pred) > tolerance, Verhulst_pred,
-        #                                                     tolerance)
+        # G = self.dynamicalNN(x=U_s)
+        # G = self.dynamicalNN(x=torch.cat((s_norm, t_norm, U_norm, U_s), dim=2))
+        # G = Verhulst(y=U, r=self.p_r, K=self.p_K, C=self.p_C)
 
-        # G = self.dynamicNN(x=U_s)
-        G = self.dynamicNN(x=torch.cat((s_norm, t_norm, U_norm, U_s), dim=2))
-        # G = Verhulst(y=U, r=self.growth_rate, K=self.carrying_capacity, C=self.initial_loss)
+        F = torch.zeros_like(U)
+        F_t = torch.zeros_like(U)
+        # F = U_t - G
+        # F_t = torch.autograd.grad(
+        #     F, t_norm,
+        #     grad_outputs=grad_outputs,
+        #     create_graph=True,
+        #     retain_graph=True,
+        #     only_inputs=True
+        # )[0]
+
+        self.U_t = U_t
+        return U, F, F_t
+
+
+class DataDrivenNN(nn.Module):
+    def __init__(self, seq_len, inputs_dim, outputs_dim, layers, scaler_inputs, scaler_targets):
+        super(DataDrivenNN, self).__init__()
+        self.seq_len, self.inputs_dim, self.outputs_dim = seq_len, inputs_dim, outputs_dim
+        self.scaler_inputs, self.scaler_targets = scaler_inputs, scaler_targets
+
+        self.surrogateNN = Neural_Net(
+            seq_len=self.seq_len,
+            inputs_dim=self.inputs_dim,
+            outputs_dim=self.outputs_dim,
+            layers=layers
+        )
+
+    def forward(self, inputs):
+        s = inputs[:, :, 0: self.inputs_dim - 1]
+        t = inputs[:, :, self.inputs_dim - 1:]
+
+        s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
+                                          std=self.scaler_inputs[1][0: self.inputs_dim - 1])
+
+        t_norm, _, _ = standardize_tensor(t, mode='transform', mean=self.scaler_inputs[0][self.inputs_dim - 1:],
+                                          std=self.scaler_inputs[1][self.inputs_dim - 1:])
+
+        U_norm = self.surrogateNN(x=torch.cat((s_norm, t_norm), dim=2))
+        U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
+
+        F = torch.zeros_like(U)
+        F_t = torch.zeros_like(U)
+
+        return U, F, F_t
+
+
+class VerhulstPINN(nn.Module):
+    def __init__(self, seq_len, inputs_dim, outputs_dim, layers, scaler_inputs, scaler_targets):
+        super(VerhulstPINN, self).__init__()
+        self.seq_len, self.inputs_dim, self.outputs_dim = seq_len, inputs_dim, outputs_dim
+        self.scaler_inputs, self.scaler_targets = scaler_inputs, scaler_targets
+
+        self.log_p_r = torch.nn.Parameter(torch.randn(()), requires_grad=True)
+        self.log_p_K = torch.nn.Parameter(torch.randn(()), requires_grad=True)
+        self.log_p_C = torch.nn.Parameter(torch.randn(()), requires_grad=True)
+
+        self.lb_p_K = 0.2
+        self.ub_p_K = 1.
+
+        self.lb_p_C = 0.
+        self.ub_p_C = 0.1
+
+        self.surrogateNN = Neural_Net(
+            seq_len=self.seq_len,
+            inputs_dim=self.inputs_dim,
+            outputs_dim=self.outputs_dim,
+            layers=layers
+        )
+
+    @property
+    def p_r(self):
+        return torch.exp(-self.log_p_r)
+
+    @property
+    def p_K(self):
+        return self.lb_p_K + (self.ub_p_K - self.lb_p_K) * torch.sigmoid(self.log_p_K)
+
+    @property
+    def p_C(self):
+        return self.lb_p_C + (self.ub_p_C - self.lb_p_C) * torch.sigmoid(self.log_p_C)
+
+    def forward(self, inputs):
+        s = inputs[:, :, 0: self.inputs_dim - 1]
+        t = inputs[:, :, self.inputs_dim - 1:]
+
+        s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
+                                          std=self.scaler_inputs[1][0: self.inputs_dim - 1])
+        t.requires_grad_(True)
+        t_norm, _, _ = standardize_tensor(t, mode='transform', mean=self.scaler_inputs[0][self.inputs_dim - 1:],
+                                          std=self.scaler_inputs[1][self.inputs_dim - 1:])
+        t_norm.requires_grad_(True)
+
+        U_norm = self.surrogateNN(x=torch.cat((s_norm, t_norm), dim=2))
+
+        U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
+
+        grad_outputs = torch.ones_like(U)
+        U_t = torch.autograd.grad(
+            U_norm, t_norm,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+
+        G = Verhulst(y=U, r=self.p_r, K=self.p_K, C=self.p_C)
 
         F = U_t - G
         F_t = torch.autograd.grad(
@@ -416,9 +529,77 @@ class CapacityNN(nn.Module):
             retain_graph=True,
             only_inputs=True
         )[0]
-        # self.tolerance = 1e-8 * torch.ones_like(U_t)
-        # F = (U_t - G) / torch.where(torch.abs(U_t) > self.tolerance, U_t, self.tolerance)
-        # F_t = (U_tt - G_t) / torch.where(torch.abs(U_tt) > self.tolerance, U_tt, self.tolerance)
+
+        self.U_t = U_t
+        return U, F, F_t
+
+
+class DeepHPMNN(nn.Module):
+    def __init__(self, seq_len, inputs_dim, outputs_dim, layers, scaler_inputs, scaler_targets):
+        super(DeepHPMNN, self).__init__()
+        self.seq_len, self.inputs_dim, self.outputs_dim = seq_len, inputs_dim, outputs_dim
+        self.scaler_inputs, self.scaler_targets = scaler_inputs, scaler_targets
+
+        self.surrogateNN = Neural_Net(
+            seq_len=self.seq_len,
+            inputs_dim=self.inputs_dim,
+            outputs_dim=self.outputs_dim,
+            layers=layers
+        )
+
+        self.dynamicalNN = Neural_Net(
+            seq_len=self.seq_len,
+            inputs_dim=2*(self.inputs_dim),
+            outputs_dim=1,
+            layers=layers
+        )
+
+    def forward(self, inputs):
+        s = inputs[:, :, 0: self.inputs_dim - 1]
+        t = inputs[:, :, self.inputs_dim - 1:]
+
+        s.requires_grad_(True)
+        s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
+                                          std=self.scaler_inputs[1][0: self.inputs_dim - 1])
+        s_norm.requires_grad_(True)
+
+        t.requires_grad_(True)
+        t_norm, _, _ = standardize_tensor(t, mode='transform', mean=self.scaler_inputs[0][self.inputs_dim - 1:],
+                                          std=self.scaler_inputs[1][self.inputs_dim - 1:])
+        t_norm.requires_grad_(True)
+
+        U_norm = self.surrogateNN(x=torch.cat((s_norm, t_norm), dim=2))
+
+        U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
+
+        grad_outputs = torch.ones_like(U)
+        U_t = torch.autograd.grad(
+            U_norm, t_norm,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+
+        U_s = torch.autograd.grad(
+            U_norm, s_norm,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+
+        # G = self.dynamicalNN(x=U_s)
+        G = self.dynamicalNN(x=torch.cat((s_norm, t_norm, U_norm, U_s), dim=2))
+
+        F = U_t - G
+        F_t = torch.autograd.grad(
+            F, t_norm,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
 
         self.U_t = U_t
         return U, F, F_t
@@ -444,31 +625,17 @@ class My_loss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, outputs_U, targets_U, outputs_F, outputs_F_t, log_var_u, log_var_f, log_var_f_t):
-        # loss_h = torch.sqrt(torch.mean((outputs_h - targets_h) ** 2))
-        # loss_y = torch.sqrt(torch.mean((outputs_y - targets_y)**2))
-        # loss_e = torch.sqrt(torch.mean((outputs_e)**2))
-        # loss = 10*loss_h + loss_y + loss_e
+    def forward(self, outputs_U, targets_U, outputs_F, outputs_F_t, log_sigma_u, log_sigma_f, log_sigma_f_t):
 
-        # loss_U = torch.sqrt(torch.mean((outputs_U - targets_U) ** 2))
-        # loss_U = torch.mean(torch.abs((outputs_U - targets_U) / targets_U))
-        # loss_U = torch.sqrt(torch.mean((outputs_U - targets_U) ** 2))
-        # loss_U = torch.sqrt(torch.mean((log_var_u * (outputs_U - targets_U)) ** 2))
         loss_U = torch.sum((outputs_U - targets_U) ** 2)
 
-        # loss_F = torch.sqrt(torch.mean((outputs_F) ** 2))
-        # loss_F = torch.mean(torch.abs(outputs_F))
         loss_F = torch.sum(outputs_F ** 2)
 
         loss_F_t = torch.sum((outputs_F_t) ** 2)
-        # loss_F_t = torch.mean(torch.abs(outputs_F_t))
 
-        # loss = loss_U / loss_U.detach() + loss_F / loss_F.detach()
-        # loss = 20*max(loss_U - 0.0058, 0) + loss_F
-        # loss = loss_U
-        # loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + log_var_u + log_var_f
-        loss = torch.exp(-log_var_u) * loss_U + torch.exp(-log_var_f) * loss_F + torch.exp(-log_var_f_t) * loss_F_t + \
-               log_var_u + log_var_f + log_var_f_t
+        loss = loss_U
+        # loss = torch.exp(-log_sigma_u) * loss_U + torch.exp(-log_sigma_f) * loss_F + torch.exp(-log_sigma_f_t) * loss_F_t + \
+        #        log_sigma_u + log_sigma_f + log_sigma_f_t
         # print(' Loss_U: {:.5f}, Loss_F: {:.5f},'.format(loss_U, loss_F))
 
         self.loss_U = loss_U
@@ -486,9 +653,9 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
     results_epoch = dict()
     results_epoch['loss_train'] = torch.zeros(num_epoch)
     results_epoch['loss_val'] = torch.zeros(num_epoch)
-    results_epoch['growth_rate'] = torch.zeros(num_epoch)
-    results_epoch['carrying_capacity'] = torch.zeros(num_epoch)
-    results_epoch['initial_loss'] = torch.zeros(num_epoch)
+    results_epoch['p_r'] = torch.zeros(num_epoch)
+    results_epoch['p_K'] = torch.zeros(num_epoch)
+    results_epoch['p_C'] = torch.zeros(num_epoch)
     results_epoch['var_U'] = torch.zeros(num_epoch)
     results_epoch['var_F'] = torch.zeros(num_epoch)
 
@@ -496,35 +663,38 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
         model.train()
         results_period = dict()
         results_period['loss_train'] = torch.zeros(num_period)
-        results_period['growth_rate'] = torch.zeros(num_period)
-        results_period['carrying_capacity'] = torch.zeros(num_period)
-        results_period['initial_loss'] = torch.zeros(num_period)
+        results_period['p_r'] = torch.zeros(num_period)
+        results_period['p_K'] = torch.zeros(num_period)
+        results_period['p_C'] = torch.zeros(num_period)
         results_period['var_U'] = torch.zeros(num_period)
         results_period['var_F'] = torch.zeros(num_period)
         with torch.backends.cudnn.flags(enabled=False):
             for period, (inputs_train_batch, targets_train_batch) in enumerate(train_loader):
-                log_var_u = log_sigma_u
-                log_var_f = log_sigma_f
-                log_var_f_t = log_sigma_f_t
-                optimizer.zero_grad()
+                
                 U_pred_train, F_pred_train, F_t_pred_train = model(inputs=inputs_train_batch)
                 loss = criterion(
                     outputs_U=U_pred_train,
                     targets_U=targets_train_batch,
                     outputs_F=F_pred_train,
                     outputs_F_t=F_t_pred_train,
-                    log_var_u=log_var_u,
-                    log_var_f=log_var_f,
-                    log_var_f_t=log_var_f_t
+                    log_sigma_u=log_sigma_u,
+                    log_sigma_f=log_sigma_f,
+                    log_sigma_f_t=log_sigma_f_t
                 )
+
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
                 results_period['loss_train'][period] = criterion.loss_U.detach()
-                results_period['growth_rate'][period] = model.growth_rate.detach()
-                results_period['carrying_capacity'][period] = model.carrying_capacity.detach()
-                results_period['initial_loss'][period] = model.initial_loss.detach()
-                results_period['var_U'][period] = torch.exp(-log_var_u).detach()
-                results_period['var_F'][period] = torch.exp(-log_var_f).detach()
+                try:
+                    results_period['p_r'][period] = model.p_r.detach()
+                    results_period['p_K'][period] = model.p_K.detach()
+                    results_period['p_C'][period] = model.p_C.detach()
+                except:
+                    pass
+                results_period['var_U'][period] = torch.exp(-log_sigma_u).detach()
+                results_period['var_F'][period] = torch.exp(-log_sigma_f).detach()
 
                 if (epoch + 1) % 1 == 0 and (period + 1) % 1 == 0:  # 每 100 次输出结果
                     print(
@@ -532,9 +702,9 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
                             epoch + 1, period + 1, loss, criterion.loss_U, criterion.loss_F, criterion.loss_F_t))
 
         results_epoch['loss_train'][epoch] = torch.mean(results_period['loss_train'])
-        results_epoch['growth_rate'][epoch] = torch.mean(results_period['growth_rate'])
-        results_epoch['carrying_capacity'][epoch] = torch.mean(results_period['carrying_capacity'])
-        results_epoch['initial_loss'][epoch] = torch.mean(results_period['initial_loss'])
+        results_epoch['p_r'][epoch] = torch.mean(results_period['p_r'])
+        results_epoch['p_K'][epoch] = torch.mean(results_period['p_K'])
+        results_epoch['p_C'][epoch] = torch.mean(results_period['p_C'])
         results_epoch['var_U'][epoch] = torch.mean(results_period['var_U'])
         results_epoch['var_F'][epoch] = torch.mean(results_period['var_F'])
 
@@ -545,34 +715,12 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
             targets_U=targets_val,
             outputs_F=F_pred_val,
             outputs_F_t=F_t_pred_val,
-            log_var_u=log_var_u,
-            log_var_f=log_var_f,
-            log_var_f_t=log_var_f_t
+            log_sigma_u=log_sigma_u,
+            log_sigma_f=log_sigma_f,
+            log_sigma_f_t=log_sigma_f_t
         )
         scheduler.step()
         results_epoch['loss_val'][epoch] = criterion.loss_U.detach()
-
-    # optimizer = optim.LBFGS(model.parameters())
-    # model.train()
-    # def closure():
-    #     log_var_u = log_sigma_u
-    #     log_var_f = log_sigma_f
-    #     optimizer.zero_grad()
-    #     U_pred_train, F_pred_train, F_t_pred_train = model(inputs=inputs_train_batch)
-    #     loss = criterion(
-    #         outputs_U=U_pred_train,
-    #         targets_U=targets_train_batch,
-    #         outputs_F=F_pred_train,
-    #         outputs_F_t=F_t_pred_train,
-    #         log_var_u=log_var_u,
-    #         log_var_f=log_var_f
-    #     )
-    #     loss.backward()
-    #     print('BFGS Loss: {:.5f}'.format(loss))
-    #     return loss
-    #
-    # with torch.backends.cudnn.flags(enabled=False):
-    #     optimizer.step(closure)
 
     return model, results_epoch
 
