@@ -535,10 +535,17 @@ class VerhulstPINN(nn.Module):
 
 
 class DeepHPMNN(nn.Module):
-    def __init__(self, seq_len, inputs_dim, outputs_dim, layers, scaler_inputs, scaler_targets):
+    def __init__(self, seq_len, inputs_dim, outputs_dim, layers, scaler_inputs, scaler_targets,
+                 inputs_dynamical, inputs_dim_dynamical):
         super(DeepHPMNN, self).__init__()
         self.seq_len, self.inputs_dim, self.outputs_dim = seq_len, inputs_dim, outputs_dim
         self.scaler_inputs, self.scaler_targets = scaler_inputs, scaler_targets
+
+        if len(inputs_dynamical.split(',')) <= 1:
+            self.inputs_dynamical = inputs_dynamical
+        else:
+            self.inputs_dynamical = 'torch.cat((' + inputs_dynamical + '), dim=2)'
+        self.inputs_dim_dynamical = eval(inputs_dim_dynamical)
 
         self.surrogateNN = Neural_Net(
             seq_len=self.seq_len,
@@ -549,7 +556,7 @@ class DeepHPMNN(nn.Module):
 
         self.dynamicalNN = Neural_Net(
             seq_len=self.seq_len,
-            inputs_dim=2*(self.inputs_dim),
+            inputs_dim=self.inputs_dim_dynamical,
             outputs_dim=1,
             layers=layers
         )
@@ -589,8 +596,7 @@ class DeepHPMNN(nn.Module):
             only_inputs=True
         )[0]
 
-        # G = self.dynamicalNN(x=U_s)
-        G = self.dynamicalNN(x=torch.cat((s_norm, t_norm, U_norm, U_s), dim=2))
+        G = eval('self.dynamicalNN(x=' + self.inputs_dynamical + ')')
 
         F = U_t - G
         F_t = torch.autograd.grad(
@@ -633,7 +639,7 @@ class My_loss(nn.Module):
 
         loss_F_t = torch.sum((outputs_F_t) ** 2)
 
-        loss = loss_U
+        loss = loss_U + loss_F + loss_F_t
         # loss = torch.exp(-log_sigma_u) * loss_U + torch.exp(-log_sigma_f) * loss_F + torch.exp(-log_sigma_f_t) * loss_F_t + \
         #        log_sigma_u + log_sigma_f + log_sigma_f_t
         # print(' Loss_U: {:.5f}, Loss_F: {:.5f},'.format(loss_U, loss_F))
