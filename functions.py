@@ -512,7 +512,7 @@ class VerhulstPINN(nn.Module):
 
         grad_outputs = torch.ones_like(U)
         U_t = torch.autograd.grad(
-            U_norm, t_norm,
+            U, t,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -639,9 +639,9 @@ class My_loss(nn.Module):
 
         loss_F_t = torch.sum((outputs_F_t) ** 2)
 
-        loss = loss_U + loss_F + loss_F_t
-        # loss = torch.exp(-log_sigma_u) * loss_U + torch.exp(-log_sigma_f) * loss_F + torch.exp(-log_sigma_f_t) * loss_F_t + \
-        #        log_sigma_u + log_sigma_f + log_sigma_f_t
+        # loss = loss_U + loss_F + loss_F_t
+        loss = torch.exp(-log_sigma_u) * loss_U + torch.exp(-log_sigma_f) * loss_F + torch.exp(-log_sigma_f_t) * loss_F_t + \
+               log_sigma_u + log_sigma_f + log_sigma_f_t
         # print(' Loss_U: {:.5f}, Loss_F: {:.5f},'.format(loss_U, loss_F))
 
         self.loss_U = loss_U

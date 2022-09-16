@@ -63,12 +63,12 @@ data = func.SeversonBattery(addr, seq_len=seq_len)
 
 metric_mean = dict()
 metric_std = dict()
-metric_mean['train'] = np.zeros(len(inputs_lib_dynamical))
-metric_mean['val'] = np.zeros(len(inputs_lib_dynamical))
-metric_mean['test'] = np.zeros(len(inputs_lib_dynamical))
-metric_std['train'] = np.zeros(len(inputs_lib_dynamical))
-metric_std['val'] = np.zeros(len(inputs_lib_dynamical))
-metric_std['test'] = np.zeros(len(inputs_lib_dynamical))
+metric_mean['train'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_mean['val'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_mean['test'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_std['train'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_std['val'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_std['test'] = np.zeros((len(inputs_lib_dynamical), 1))
 for l in range(len(inputs_lib_dynamical)):
     inputs_dynamical, inputs_dim_dynamical = inputs_lib_dynamical[l], inputs_dim_lib_dynamical[l]
     layers = num_layers[0] * [num_neurons[0]]

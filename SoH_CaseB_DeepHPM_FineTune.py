@@ -22,39 +22,11 @@ num_epoch = 1000
 num_layers = [2]
 num_neurons = [128]
 inputs_lib_dynamical = [
-    's_norm',
-    't_norm',
-    'U_norm',
-    'U_s',
-    's_norm, t_norm',
-    's_norm, U_norm',
-    's_norm, U_s',
-    't_norm, U_norm',
-    't_norm, U_s',
-    'U_norm, U_s',
-    's_norm, t_norm, U_norm',
-    's_norm, t_norm, U_s',
-    's_norm, U_norm, U_s',
-    't_norm, U_norm, U_s',
-    's_norm, t_norm, U_norm, U_s'
+    's_norm'
 ]
 
 inputs_dim_lib_dynamical = [
-    'inputs_dim - 1',
-    '1',
-    '1',
-    'inputs_dim - 1',
-    'inputs_dim',
-    'inputs_dim',
-    '2 * (inputs_dim - 1)',
-    '2',
-    'inputs_dim',
-    'inputs_dim',
-    'inputs_dim + 1',
-    '2 * (inputs_dim - 1) + 1',
-    '2 * (inputs_dim - 1) + 1',
-    'inputs_dim + 1',
-    '2 * inputs_dim'
+    'inputs_dim - 1'
 ]
 
 addr = 'SeversonBattery.mat'
@@ -81,8 +53,8 @@ for l in range(len(inputs_lib_dynamical)):
     for round in range(num_rounds):
         inputs_dict, targets_dict = func.create_chosen_cells(
             data,
-            idx_cells_train=[91, 100],
-            idx_cells_test=[124],
+            idx_cells_train=[101, 108, 120],
+            idx_cells_test=[116],
             perc_val=perc_val
         )
         inputs_train = inputs_dict['train'].to(device)
@@ -118,13 +90,13 @@ for l in range(len(inputs_lib_dynamical)):
             inputs_dim_dynamical=inputs_dim_dynamical
         ).to(device)
 
-        log_sigma_u = torch.zeros(())
-        log_sigma_f = torch.zeros(())
-        log_sigma_f_t = torch.zeros(())
+        log_sigma_u = torch.randn((), requires_grad=True)
+        log_sigma_f = torch.randn((), requires_grad=True)
+        log_sigma_f_t = torch.randn((), requires_grad=True)
 
         criterion = func.My_loss()
 
-        params = ([p for p in model.parameters()])
+        params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
         optimizer = optim.Adam(params, lr=1e-3)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
         model, results_epoch = func.train(
@@ -172,8 +144,8 @@ for l in range(len(inputs_lib_dynamical)):
         metric_std['train'][l] = np.std(metric_rounds['train'])
         metric_std['val'][l] = np.std(metric_rounds['val'])
         metric_std['test'][l] = np.std(metric_rounds['test'])
-        torch.save(metric_mean, 'metric_mean_SoH_A.pth')
-        torch.save(metric_std, 'metric_std_SoH_A.pth')
+        torch.save(metric_mean, 'metric_mean_SoH_B.pth')
+        torch.save(metric_std, 'metric_std_SoH_B.pth')
 
 torch.save(model, 'CapacityNN.pth')
 inputs_all_ndarray_flt = np.concatenate(data.inputs_units)
