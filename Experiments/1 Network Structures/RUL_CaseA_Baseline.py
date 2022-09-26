@@ -9,10 +9,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset
 import functions as func
 
-
-
-# device = torch.device("cuda")
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 seq_len = 1
 perc_val = 0.2
@@ -22,7 +19,7 @@ num_epoch = 1000
 num_layers = [2, 4, 6, 8, 10]
 num_neurons = [8, 16, 32, 64, 128]
 
-addr = 'SeversonBattery.mat'
+addr = '..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
@@ -46,8 +43,8 @@ for l, num_l in enumerate(num_layers):
         for round in range(num_rounds):
             inputs_dict, targets_dict = func.create_chosen_cells(
                 data,
-                idx_cells_train=[101, 108, 120],
-                idx_cells_test=[116],
+                idx_cells_train=[91, 100],
+                idx_cells_test=[124],
                 perc_val=perc_val
             )
             inputs_train = inputs_dict['train'].to(device)
@@ -121,16 +118,13 @@ for l, num_l in enumerate(num_layers):
             metric_rounds['val'][round] = RMSE_val.detach().cpu().numpy()
             metric_rounds['test'][round] = RMSE_test.detach().cpu().numpy()
 
-            torch.save(metric_rounds, 'metric_rounds.pth')
-
         metric_mean['train'][l, n] = np.mean(metric_rounds['train'])
         metric_mean['val'][l, n] = np.mean(metric_rounds['val'])
         metric_mean['test'][l, n] = np.mean(metric_rounds['test'])
         metric_std['train'][l, n] = np.std(metric_rounds['train'])
         metric_std['val'][l, n] = np.std(metric_rounds['val'])
         metric_std['test'][l, n] = np.std(metric_rounds['test'])
-        torch.save(metric_mean, 'metric_mean_RUL_B.pth')
-        torch.save(metric_std, 'metric_std_RUL_B.pth')
+        torch.save(metric_mean, '..\\..\\Results\\1 Network Structures\\metric_mean_RUL_CaseA_Baseline.pth')
+        torch.save(metric_std, '..\\..\\Results\\1 Network Structures\\metric_std_RUL_CaseA_Baseline.pth')
 
-torch.save(model, 'CapacityNN.pth')
 pass

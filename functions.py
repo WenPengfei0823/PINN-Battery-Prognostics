@@ -444,6 +444,7 @@ class DataDrivenNN(nn.Module):
     def forward(self, inputs):
         s = inputs[:, :, 0: self.inputs_dim - 1]
         t = inputs[:, :, self.inputs_dim - 1:]
+        t.requires_grad_(True)
 
         s_norm, _, _ = standardize_tensor(s, mode='transform', mean=self.scaler_inputs[0][0: self.inputs_dim - 1],
                                           std=self.scaler_inputs[1][0: self.inputs_dim - 1])
@@ -454,8 +455,19 @@ class DataDrivenNN(nn.Module):
         U_norm = self.surrogateNN(x=torch.cat((s_norm, t_norm), dim=2))
         U = inverse_standardize_tensor(U_norm, mean=self.scaler_targets[0], std=self.scaler_targets[1])
 
+        grad_outputs = torch.ones_like(U)
+        U_t = torch.autograd.grad(
+            U, t,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+
         F = torch.zeros_like(U)
         F_t = torch.zeros_like(U)
+
+        self.U_t = U_t
 
         return U, F, F_t
 

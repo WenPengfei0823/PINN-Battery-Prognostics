@@ -9,20 +9,17 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset
 import functions as func
 
-
-
-# device = torch.device("cuda")
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 seq_len = 1
 perc_val = 0.2
-num_rounds = 5
+num_rounds = 1
 batch_size = 256
 num_epoch = 1000
-num_layers = [2, 4, 6, 8, 10]
-num_neurons = [8, 16, 32, 64, 128]
+num_layers = [2]
+num_neurons = [128]
 
-addr = 'SeversonBattery.mat'
+addr = '..\..\..\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
@@ -46,8 +43,8 @@ for l, num_l in enumerate(num_layers):
         for round in range(num_rounds):
             inputs_dict, targets_dict = func.create_chosen_cells(
                 data,
-                idx_cells_train=[101, 108, 120],
-                idx_cells_test=[116],
+                idx_cells_train=[91, 100],
+                idx_cells_test=[124],
                 perc_val=perc_val
             )
             inputs_train = inputs_dict['train'].to(device)
@@ -127,25 +124,25 @@ for l, num_l in enumerate(num_layers):
             metric_rounds['val'][round] = RMSPE_val.detach().cpu().numpy()
             metric_rounds['test'][round] = RMSPE_test.detach().cpu().numpy()
 
-            torch.save(metric_rounds, 'metric_rounds.pth')
-
         metric_mean['train'][l, n] = np.mean(metric_rounds['train'])
         metric_mean['val'][l, n] = np.mean(metric_rounds['val'])
         metric_mean['test'][l, n] = np.mean(metric_rounds['test'])
         metric_std['train'][l, n] = np.std(metric_rounds['train'])
         metric_std['val'][l, n] = np.std(metric_rounds['val'])
         metric_std['test'][l, n] = np.std(metric_rounds['test'])
-        torch.save(metric_mean, 'metric_mean_SoH_B.pth')
-        torch.save(metric_std, 'metric_std_SoH_B.pth')
 
-torch.save(model, 'CapacityNN.pth')
-inputs_all_ndarray_flt = np.concatenate(data.inputs_units)
-inputs_all_tensor = torch.from_numpy(inputs_all_ndarray_flt).contiguous().view((-1, seq_len, inputs_dim)).type(torch.float32).to(device)
-U_pred_all, _, _ = model(inputs=inputs_all_tensor)
-U_pred_all_ndarray_flt = U_pred_all.contiguous().view((-1, 1)).detach().cpu().numpy()
-# U_t_pred_all_ndarray_flt = model.U_t.contiguous().view((-1, 1)).detach().cpu().numpy()
-CapacityNNOutputs = data.data
-CapacityNNOutputs['Features_mov_Flt'] = np.concatenate((
-    CapacityNNOutputs['Features_mov_Flt'], U_pred_all_ndarray_flt), axis=1)
-scipy.io.savemat('CapacityNNOutputsB.mat', CapacityNNOutputs)
+model.eval()
+inputs_test = inputs_dict['test'].to(device)
+targets_test = targets_dict['test'][:, :, 0:1].to(device)
+U_pred_test, F_pred_test, _ = model(inputs=inputs_test)
+U_pred_test = 1. - U_pred_test
+targets_test = 1. - targets_test
+
+results = dict()
+results['U_true'] = targets_test.detach().cpu().numpy().squeeze()
+results['U_pred'] = U_pred_test.detach().cpu().numpy().squeeze()
+results['U_t_pred'] = model.U_t.detach().cpu().numpy().squeeze()
+results['Cycles'] = inputs_test[:, :, -1:].detach().cpu().numpy().squeeze()
+results['Epochs'] = np.arange(0, num_epoch)
+torch.save(results, '..\..\..\Results\\4 Presentation\SoH Estimation\SoH_CaseA_Baseline.pth')
 pass
