@@ -13,13 +13,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 seq_len = 1
 perc_val = 0.2
-num_rounds = 5
+num_rounds = 1
 batch_size = 256
 num_epoch = 1000
-num_layers = [2, 4, 6, 8, 10]
-num_neurons = [8, 16, 32, 64, 128]
+num_layers = [2]
+num_neurons = [128]
 
-addr = '..\\..\\eversonBattery.mat'
+addr = '..\\..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
@@ -43,8 +43,8 @@ for l, num_l in enumerate(num_layers):
         for round in range(num_rounds):
             inputs_dict, targets_dict = func.create_chosen_cells(
                 data,
-                idx_cells_train=[101, 108, 120],
-                idx_cells_test=[116],
+                idx_cells_train=[91, 100],
+                idx_cells_test=[124],
                 perc_val=perc_val
             )
             inputs_train = inputs_dict['train'].to(device)
@@ -124,7 +124,17 @@ for l, num_l in enumerate(num_layers):
         metric_std['train'][l, n] = np.std(metric_rounds['train'])
         metric_std['val'][l, n] = np.std(metric_rounds['val'])
         metric_std['test'][l, n] = np.std(metric_rounds['test'])
-        torch.save(metric_mean, '..\\..\\Results\\1 Network Structures\\metric_mean_RUL_CaseB_Baseline.pth')
-        torch.save(metric_std, '..\\..\\Results\\1 Network Structures\\metric_std_RUL_CaseB_Baseline.pth')
 
+model.eval()
+inputs_test = inputs_dict['test'].to(device)
+targets_test = targets_dict['test'][:, :, 1:].to(device)
+U_pred_test, F_pred_test, _ = model(inputs=inputs_test)
+
+results = dict()
+results['U_true'] = targets_test.detach().cpu().numpy().squeeze()
+results['U_pred'] = U_pred_test.detach().cpu().numpy().squeeze()
+results['U_t_pred'] = model.U_t.detach().cpu().numpy().squeeze()
+results['Cycles'] = inputs_test[:, :, -1:].detach().cpu().numpy().squeeze()
+results['Epochs'] = np.arange(0, num_epoch)
+torch.save(results, '..\\..\\..\\Results\\4 Presentation\\RUL Prognostics\\RUL_CaseA_Baseline.pth')
 pass

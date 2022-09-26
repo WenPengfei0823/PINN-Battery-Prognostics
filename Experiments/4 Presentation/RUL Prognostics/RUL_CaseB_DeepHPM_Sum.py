@@ -57,9 +57,9 @@ for l in range(len(inputs_lib_dynamical)):
         inputs_train = inputs_dict['train'].to(device)
         inputs_val = inputs_dict['val'].to(device)
         inputs_test = inputs_dict['test'].to(device)
-        targets_train = targets_dict['train'][:, :, 0:1].to(device)
-        targets_val = targets_dict['val'][:, :, 0:1].to(device)
-        targets_test = targets_dict['test'][:, :, 0:1].to(device)
+        targets_train = targets_dict['train'][:, :, 1:].to(device)
+        targets_val = targets_dict['val'][:, :, 1:].to(device)
+        targets_test = targets_dict['test'][:, :, 1:].to(device)
 
         inputs_dim = inputs_train.shape[2]
         outputs_dim = 1
@@ -115,23 +115,17 @@ for l in range(len(inputs_lib_dynamical)):
         model.eval()
 
         U_pred_train, F_pred_train, _ = model(inputs=inputs_train)
-        U_pred_train = 1. - U_pred_train
-        targets_train = 1. - targets_train
-        RMSPE_train = torch.sqrt(torch.mean(((U_pred_train - targets_train) / targets_train) ** 2))
+        RMSE_train = torch.sqrt(torch.mean(((U_pred_train - targets_train)) ** 2))
 
         U_pred_val, F_pred_val, _ = model(inputs=inputs_val)
-        U_pred_val = 1. - U_pred_val
-        targets_val = 1. - targets_val
-        RMSPE_val = torch.sqrt(torch.mean(((U_pred_val - targets_val) / targets_val) ** 2))
+        RMSE_val = torch.sqrt(torch.mean(((U_pred_val - targets_val)) ** 2))
 
         U_pred_test, F_pred_test, _ = model(inputs=inputs_test)
-        U_pred_test = 1. - U_pred_test
-        targets_test = 1. - targets_test
-        RMSPE_test = torch.sqrt(torch.mean(((U_pred_test - targets_test) / targets_test) ** 2))
+        RMSE_test = torch.sqrt(torch.mean(((U_pred_test - targets_test)) ** 2))
 
-        metric_rounds['train'][round] = RMSPE_train.detach().cpu().numpy()
-        metric_rounds['val'][round] = RMSPE_val.detach().cpu().numpy()
-        metric_rounds['test'][round] = RMSPE_test.detach().cpu().numpy()
+        metric_rounds['train'][round] = RMSE_train.detach().cpu().numpy()
+        metric_rounds['val'][round] = RMSE_val.detach().cpu().numpy()
+        metric_rounds['test'][round] = RMSE_test.detach().cpu().numpy()
 
     metric_mean['train'][l] = np.mean(metric_rounds['train'])
     metric_mean['val'][l] = np.mean(metric_rounds['val'])
@@ -142,10 +136,8 @@ for l in range(len(inputs_lib_dynamical)):
 
 model.eval()
 inputs_test = inputs_dict['test'].to(device)
-targets_test = targets_dict['test'][:, :, 0:1].to(device)
+targets_test = targets_dict['test'][:, :, 1:].to(device)
 U_pred_test, F_pred_test, _ = model(inputs=inputs_test)
-U_pred_test = 1. - U_pred_test
-targets_test = 1. - targets_test
 
 results = dict()
 results['U_true'] = targets_test.detach().cpu().numpy().squeeze()
@@ -153,5 +145,5 @@ results['U_pred'] = U_pred_test.detach().cpu().numpy().squeeze()
 results['U_t_pred'] = model.U_t.detach().cpu().numpy().squeeze()
 results['Cycles'] = inputs_test[:, :, -1:].detach().cpu().numpy().squeeze()
 results['Epochs'] = np.arange(0, num_epoch)
-torch.save(results, '..\\..\\..\\Results\\4 Presentation\\SoH Estimation\\SoH_CaseB_DeepHPM_Sum.pth')
+torch.save(results, '..\\..\\..\\Results\\4 Presentation\\RUL Prognostics\\RUL_CaseB_DeepHPM_Sum.pth')
 pass

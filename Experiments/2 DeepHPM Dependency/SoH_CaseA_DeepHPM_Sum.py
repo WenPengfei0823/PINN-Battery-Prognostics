@@ -119,7 +119,7 @@ for l in range(len(inputs_lib_dynamical)):
         log_sigma_f = torch.zeros(())
         log_sigma_f_t = torch.zeros(())
 
-        criterion = func.My_loss()
+        criterion = func.My_loss(mode='Sum')
 
         params = ([p for p in model.parameters()])
         optimizer = optim.Adam(params, lr=1e-3)

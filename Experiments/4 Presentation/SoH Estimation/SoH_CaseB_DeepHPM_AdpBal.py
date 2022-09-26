@@ -26,7 +26,7 @@ inputs_dim_lib_dynamical = [
     'inputs_dim'
 ]
 
-addr = '..\..\..\SeversonBattery.mat'
+addr = '..\\..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
@@ -91,7 +91,7 @@ for l in range(len(inputs_lib_dynamical)):
         log_sigma_f = torch.randn((), requires_grad=True)
         log_sigma_f_t = torch.randn((), requires_grad=True)
 
-        criterion = func.My_loss()
+        criterion = func.My_loss(mode='AdpBal')
 
         params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
         optimizer = optim.Adam(params, lr=1e-3)
@@ -133,12 +133,12 @@ for l in range(len(inputs_lib_dynamical)):
         metric_rounds['val'][round] = RMSPE_val.detach().cpu().numpy()
         metric_rounds['test'][round] = RMSPE_test.detach().cpu().numpy()
 
-        metric_mean['train'][l] = np.mean(metric_rounds['train'])
-        metric_mean['val'][l] = np.mean(metric_rounds['val'])
-        metric_mean['test'][l] = np.mean(metric_rounds['test'])
-        metric_std['train'][l] = np.std(metric_rounds['train'])
-        metric_std['val'][l] = np.std(metric_rounds['val'])
-        metric_std['test'][l] = np.std(metric_rounds['test'])
+    metric_mean['train'][l] = np.mean(metric_rounds['train'])
+    metric_mean['val'][l] = np.mean(metric_rounds['val'])
+    metric_mean['test'][l] = np.mean(metric_rounds['test'])
+    metric_std['train'][l] = np.std(metric_rounds['train'])
+    metric_std['val'][l] = np.std(metric_rounds['val'])
+    metric_std['test'][l] = np.std(metric_rounds['test'])
 
 model.eval()
 inputs_test = inputs_dict['test'].to(device)
@@ -155,5 +155,5 @@ results['Cycles'] = inputs_test[:, :, -1:].detach().cpu().numpy().squeeze()
 results['Epochs'] = np.arange(0, num_epoch)
 results['lambda_U'] = results_epoch['var_U']
 results['lambda_F'] = results_epoch['var_F']
-torch.save(results, '..\..\..\Results\\4 Presentation\SoH Estimation\SoH_CaseB_DeepHPM_AdpBal.pth')
+torch.save(results, '..\\..\\..\\Results\\4 Presentation\\SoH Estimation\\SoH_CaseB_DeepHPM_AdpBal.pth')
 pass

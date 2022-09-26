@@ -26,7 +26,7 @@ inputs_dim_lib_dynamical = [
     'inputs_dim'
 ]
 
-addr = '..\..\..\SeversonBattery.mat'
+addr = '..\\..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
@@ -91,7 +91,7 @@ for l in range(len(inputs_lib_dynamical)):
         log_sigma_f = torch.zeros(())
         log_sigma_f_t = torch.zeros(())
 
-        criterion = func.My_loss()
+        criterion = func.My_loss(mode='Sum')
 
         params = ([p for p in model.parameters()])
         optimizer = optim.Adam(params, lr=1e-3)
@@ -133,12 +133,12 @@ for l in range(len(inputs_lib_dynamical)):
         metric_rounds['val'][round] = RMSPE_val.detach().cpu().numpy()
         metric_rounds['test'][round] = RMSPE_test.detach().cpu().numpy()
 
-        metric_mean['train'][l] = np.mean(metric_rounds['train'])
-        metric_mean['val'][l] = np.mean(metric_rounds['val'])
-        metric_mean['test'][l] = np.mean(metric_rounds['test'])
-        metric_std['train'][l] = np.std(metric_rounds['train'])
-        metric_std['val'][l] = np.std(metric_rounds['val'])
-        metric_std['test'][l] = np.std(metric_rounds['test'])
+    metric_mean['train'][l] = np.mean(metric_rounds['train'])
+    metric_mean['val'][l] = np.mean(metric_rounds['val'])
+    metric_mean['test'][l] = np.mean(metric_rounds['test'])
+    metric_std['train'][l] = np.std(metric_rounds['train'])
+    metric_std['val'][l] = np.std(metric_rounds['val'])
+    metric_std['test'][l] = np.std(metric_rounds['test'])
 
 model.eval()
 inputs_test = inputs_dict['test'].to(device)
@@ -153,5 +153,5 @@ results['U_pred'] = U_pred_test.detach().cpu().numpy().squeeze()
 results['U_t_pred'] = model.U_t.detach().cpu().numpy().squeeze()
 results['Cycles'] = inputs_test[:, :, -1:].detach().cpu().numpy().squeeze()
 results['Epochs'] = np.arange(0, num_epoch)
-torch.save(results, '..\..\..\Results\\4 Presentation\SoH Estimation\SoH_CaseA_DeepHPM_Sum.pth')
+torch.save(results, '..\\..\\..\\Results\\4 Presentation\\SoH Estimation\\SoH_CaseA_DeepHPM_Sum.pth')
 pass

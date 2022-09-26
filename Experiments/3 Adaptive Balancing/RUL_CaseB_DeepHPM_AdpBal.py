@@ -91,7 +91,7 @@ for l in range(len(inputs_lib_dynamical)):
         log_sigma_f = torch.randn((), requires_grad=True)
         log_sigma_f_t = torch.randn((), requires_grad=True)
 
-        criterion = func.My_loss()
+        criterion = func.My_loss(mode='AdpBal')
 
         params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
         optimizer = optim.Adam(params, lr=1e-3)
@@ -127,13 +127,13 @@ for l in range(len(inputs_lib_dynamical)):
         metric_rounds['val'][round] = RMSE_val.detach().cpu().numpy()
         metric_rounds['test'][round] = RMSE_test.detach().cpu().numpy()
 
-        metric_mean['train'][l] = np.mean(metric_rounds['train'])
-        metric_mean['val'][l] = np.mean(metric_rounds['val'])
-        metric_mean['test'][l] = np.mean(metric_rounds['test'])
-        metric_std['train'][l] = np.std(metric_rounds['train'])
-        metric_std['val'][l] = np.std(metric_rounds['val'])
-        metric_std['test'][l] = np.std(metric_rounds['test'])
-        torch.save(metric_mean, '..\\..\\Results\\3 Adaptive Balancing\\metric_mean_RUL_CaseB_DeepHPM_AdpBal.pth')
-        torch.save(metric_std, '..\\..\\Results\\3 Adaptive Balancing\\metric_std_RUL_CaseB_DeepHPM_AdpBal.pth')
+    metric_mean['train'][l] = np.mean(metric_rounds['train'])
+    metric_mean['val'][l] = np.mean(metric_rounds['val'])
+    metric_mean['test'][l] = np.mean(metric_rounds['test'])
+    metric_std['train'][l] = np.std(metric_rounds['train'])
+    metric_std['val'][l] = np.std(metric_rounds['val'])
+    metric_std['test'][l] = np.std(metric_rounds['test'])
+    torch.save(metric_mean, '..\\..\\Results\\3 Adaptive Balancing\\metric_mean_RUL_CaseB_DeepHPM_AdpBal.pth')
+    torch.save(metric_std, '..\\..\\Results\\3 Adaptive Balancing\\metric_std_RUL_CaseB_DeepHPM_AdpBal.pth')
 
 pass

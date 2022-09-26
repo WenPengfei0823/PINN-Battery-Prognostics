@@ -81,7 +81,7 @@ for round in range(num_rounds):
     log_sigma_f = torch.randn((), requires_grad=True)
     log_sigma_f_t = torch.randn((), requires_grad=True)
 
-    criterion = func.My_loss()
+    criterion = func.My_loss(mode='AdpBal')
 
     params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
     optimizer = optim.Adam(params, lr=1e-3)

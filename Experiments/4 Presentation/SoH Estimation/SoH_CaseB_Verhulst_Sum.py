@@ -19,7 +19,7 @@ num_epoch = 1000
 num_layers = [2]
 num_neurons = [128]
 
-addr = '..\..\..\SeversonBattery.mat'
+addr = '..\\..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
@@ -81,7 +81,7 @@ for round in range(num_rounds):
     log_sigma_f = torch.zeros(())
     log_sigma_f_t = torch.zeros(())
 
-    criterion = func.My_loss()
+    criterion = func.My_loss('Sum')
 
     params = ([p for p in model.parameters()])
     optimizer = optim.Adam(params, lr=1e-3)
@@ -148,5 +148,5 @@ results['Epochs'] = np.arange(0, num_epoch)
 results['r'] = results_epoch['p_r']
 results['K'] = results_epoch['p_K']
 results['C'] = results_epoch['p_C']
-torch.save(results, '..\..\..\Results\\4 Presentation\SoH Estimation\SoH_CaseB_Verhulst_Sum.pth')
+torch.save(results, '..\\..\\..\\Results\\4 Presentation\\SoH Estimation\\SoH_CaseB_Verhulst_Sum.pth')
 pass

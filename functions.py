@@ -640,8 +640,9 @@ class TensorDataset(Dataset):
 
 
 class My_loss(nn.Module):
-    def __init__(self):
+    def __init__(self, mode):
         super().__init__()
+        self.mode = mode
 
     def forward(self, outputs_U, targets_U, outputs_F, outputs_F_t, log_sigma_u, log_sigma_f, log_sigma_f_t):
 
@@ -651,9 +652,13 @@ class My_loss(nn.Module):
 
         loss_F_t = torch.sum((outputs_F_t) ** 2)
 
-        # loss = loss_U + loss_F + loss_F_t
-        loss = torch.exp(-log_sigma_u) * loss_U + torch.exp(-log_sigma_f) * loss_F + torch.exp(-log_sigma_f_t) * loss_F_t + \
-               log_sigma_u + log_sigma_f + log_sigma_f_t
+        if self.mode == 'Baseline':
+            loss = loss_U
+        if self.mode == 'Sum':
+            loss = loss_U + loss_F + loss_F_t
+        if self.mode == 'AdpBal':
+            loss = torch.exp(-log_sigma_u) * loss_U + torch.exp(-log_sigma_f) * loss_F + torch.exp(-log_sigma_f_t) * loss_F_t + \
+                   log_sigma_u + log_sigma_f + log_sigma_f_t
         # print(' Loss_U: {:.5f}, Loss_F: {:.5f},'.format(loss_U, loss_F))
 
         self.loss_U = loss_U
