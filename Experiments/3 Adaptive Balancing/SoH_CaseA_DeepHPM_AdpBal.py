@@ -14,8 +14,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seq_len = 1
 perc_val = 0.2
 num_rounds = 5
-batch_size = 256
-num_epoch = 1000
+batch_size = 1024
+num_epoch = 2000
 num_layers = [2]
 num_neurons = [128]
 inputs_lib_dynamical = [
@@ -95,7 +95,7 @@ for l in range(len(inputs_lib_dynamical)):
 
         params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
         optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,

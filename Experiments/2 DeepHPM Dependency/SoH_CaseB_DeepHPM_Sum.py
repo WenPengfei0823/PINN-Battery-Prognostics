@@ -17,7 +17,7 @@ num_rounds = 5
 batch_size = 256
 num_epoch = 1000
 num_layers = [2]
-num_neurons = [128]
+num_neurons = [64]
 inputs_lib_dynamical = [
     's_norm',
     't_norm',
@@ -123,7 +123,7 @@ for l in range(len(inputs_lib_dynamical)):
 
         params = ([p for p in model.parameters()])
         optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,

@@ -14,16 +14,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seq_len = 1
 perc_val = 0.2
 num_rounds = 1
-batch_size = 256
-num_epoch = 1000
+batch_size = 1024
+num_epoch = 2000
 num_layers = [2]
-num_neurons = [128]
+num_neurons = [64]
 inputs_lib_dynamical = [
-    's_norm, t_norm'
+    's_norm, U_s'
 ]
 
 inputs_dim_lib_dynamical = [
-    'inputs_dim'
+    '2 * (inputs_dim - 1)'
 ]
 
 addr = '..\\..\\..\\SeversonBattery.mat'
@@ -95,7 +95,7 @@ for l in range(len(inputs_lib_dynamical)):
 
         params = ([p for p in model.parameters()])
         optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,

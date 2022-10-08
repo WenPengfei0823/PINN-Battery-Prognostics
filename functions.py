@@ -306,7 +306,7 @@ class Neural_Net(nn.Module):
         elif activation == 'Sin':
             self.layers.append(Sin())
         # self.layers.append(nn.BatchNorm1d(num_features=layers[0]))
-        self.layers.append(nn.Dropout(p=0.1))
+        self.layers.append(nn.Dropout(p=0.2))
 
         for l in range(len(layers) - 1):
             self.layers.append(nn.Linear(in_features=layers[l], out_features=layers[l + 1]))
@@ -317,7 +317,7 @@ class Neural_Net(nn.Module):
             elif activation == 'Sin':
                 self.layers.append(Sin())
             # self.layers.append(nn.BatchNorm1d(num_features=layers[l + 1]))
-            self.layers.append(nn.Dropout(p=0.1))
+            self.layers.append(nn.Dropout(p=0.2))
 
         self.layers.append(nn.Linear(in_features=layers[l + 1], out_features=outputs_dim))
         nn.init.xavier_normal_(self.layers[-1].weight)
@@ -681,6 +681,7 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
     results_epoch['p_C'] = torch.zeros(num_epoch)
     results_epoch['var_U'] = torch.zeros(num_epoch)
     results_epoch['var_F'] = torch.zeros(num_epoch)
+    results_epoch['var_F_t'] = torch.zeros(num_epoch)
 
     for epoch in range(num_epoch):
         model.train()
@@ -691,6 +692,7 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
         results_period['p_C'] = torch.zeros(num_period)
         results_period['var_U'] = torch.zeros(num_period)
         results_period['var_F'] = torch.zeros(num_period)
+        results_period['var_F_t'] = torch.zeros(num_period)
         with torch.backends.cudnn.flags(enabled=False):
             for period, (inputs_train_batch, targets_train_batch) in enumerate(train_loader):
                 
@@ -718,6 +720,7 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
                     pass
                 results_period['var_U'][period] = torch.exp(-log_sigma_u).detach()
                 results_period['var_F'][period] = torch.exp(-log_sigma_f).detach()
+                results_period['var_F_t'][period] = torch.exp(-log_sigma_f_t).detach()
 
                 if (epoch + 1) % 1 == 0 and (period + 1) % 1 == 0:  # 每 100 次输出结果
                     print(
@@ -730,6 +733,7 @@ def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, tar
         results_epoch['p_C'][epoch] = torch.mean(results_period['p_C'])
         results_epoch['var_U'][epoch] = torch.mean(results_period['var_U'])
         results_epoch['var_F'][epoch] = torch.mean(results_period['var_F'])
+        results_epoch['var_F_t'][epoch] = torch.mean(results_period['var_F_t'])
 
         model.eval()
         U_pred_val, F_pred_val, F_t_pred_val = model(inputs=inputs_val)

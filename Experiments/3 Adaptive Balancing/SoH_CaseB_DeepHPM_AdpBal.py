@@ -17,13 +17,13 @@ num_rounds = 5
 batch_size = 256
 num_epoch = 1000
 num_layers = [2]
-num_neurons = [128]
+num_neurons = [64]
 inputs_lib_dynamical = [
-    's_norm'
+    's_norm, U_s'
 ]
 
 inputs_dim_lib_dynamical = [
-    'inputs_dim - 1'
+    '2 * (inputs_dim - 1)'
 ]
 
 addr = '..\\..\\SeversonBattery.mat'

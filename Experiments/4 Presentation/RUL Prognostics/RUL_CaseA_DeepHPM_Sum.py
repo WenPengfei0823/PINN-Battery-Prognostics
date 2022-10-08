@@ -14,16 +14,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seq_len = 1
 perc_val = 0.2
 num_rounds = 1
-batch_size = 256
-num_epoch = 1000
+batch_size = 1024
+num_epoch = 2000
 num_layers = [2]
 num_neurons = [128]
 inputs_lib_dynamical = [
-    's_norm, t_norm'
+    't_norm, U_norm, U_s'
 ]
 
 inputs_dim_lib_dynamical = [
-    'inputs_dim'
+    'inputs_dim + 1'
 ]
 
 addr = '..\\..\\..\\SeversonBattery.mat'
