@@ -11,20 +11,16 @@ import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+settings = torch.load('..\\Settings\\settings_SoH_CaseA.pth')
 seq_len = 1
 perc_val = 0.2
-num_rounds = 5
-batch_size = 1024
-num_epoch = 2000
-num_layers = [2]
-num_neurons = [128]
-inputs_lib_dynamical = [
-    's_norm, t_norm'
-]
-
-inputs_dim_lib_dynamical = [
-    'inputs_dim'
-]
+num_rounds = settings['num_rounds']
+batch_size = settings['batch_size']
+num_epoch = settings['num_epoch']
+num_layers = settings['num_layers']
+num_neurons = settings['num_neurons']
+inputs_lib_dynamical = settings['inputs_lib_dynamical']
+inputs_dim_lib_dynamical = settings['inputs_dim_lib_dynamical']
 
 addr = '..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
@@ -47,6 +43,7 @@ for l in range(len(inputs_lib_dynamical)):
     metric_rounds['train'] = np.zeros(num_rounds)
     metric_rounds['val'] = np.zeros(num_rounds)
     metric_rounds['test'] = np.zeros(num_rounds)
+    weights_rounds = [[]] * num_rounds
     for round in range(num_rounds):
         inputs_dict, targets_dict = func.create_chosen_cells(
             data,
@@ -94,15 +91,15 @@ for l in range(len(inputs_lib_dynamical)):
         criterion = func.My_loss(mode='AdpBal')
 
         params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
-        optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
+        optimizer = optim.Adam(params, lr=settings['lr'])
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=settings['step_size'], gamma=settings['gamma'])
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,
             train_loader=train_loader,
             num_slices_train=inputs_train.shape[0],
-            inputs_val=inputs_test,
-            targets_val=targets_test,
+            inputs_val=inputs_val,
+            targets_val=targets_val,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
@@ -132,6 +129,11 @@ for l in range(len(inputs_lib_dynamical)):
         metric_rounds['train'][round] = RMSPE_train.detach().cpu().numpy()
         metric_rounds['val'][round] = RMSPE_val.detach().cpu().numpy()
         metric_rounds['test'][round] = RMSPE_test.detach().cpu().numpy()
+        weights_rounds[round] = dict()
+        weights_rounds[round]['lambda_U'] = results_epoch['var_U']
+        weights_rounds[round]['lambda_F'] = results_epoch['var_F']
+        weights_rounds[round]['lambda_F_t'] = results_epoch['var_F_t']
+        torch.save(weights_rounds, '..\\..\\Results\\3 Adaptive Balancing\\weights_rounds_SoH_CaseA_DeepHPM_AdpBal.pth')
 
     metric_mean['train'][l] = np.mean(metric_rounds['train'])
     metric_mean['val'][l] = np.mean(metric_rounds['val'])

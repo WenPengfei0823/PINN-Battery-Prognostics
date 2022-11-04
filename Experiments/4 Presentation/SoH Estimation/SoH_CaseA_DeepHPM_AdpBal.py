@@ -13,7 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 seq_len = 1
 perc_val = 0.2
-num_rounds = 2
+num_rounds = 1
 batch_size = 1024
 num_epoch = 2000
 num_layers = [2]
@@ -101,8 +101,8 @@ for l in range(len(inputs_lib_dynamical)):
             batch_size=batch_size,
             train_loader=train_loader,
             num_slices_train=inputs_train.shape[0],
-            inputs_val=inputs_test,
-            targets_val=targets_test,
+            inputs_val=inputs_val,
+            targets_val=targets_val,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,

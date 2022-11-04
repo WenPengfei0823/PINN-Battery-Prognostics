@@ -19,7 +19,7 @@ num_epoch = 2000
 num_layers = [2]
 num_neurons = [128]
 inputs_lib_dynamical = [
-    't_norm, U_norm, U_s'
+    's_norm, t_norm, U_norm'
 ]
 
 inputs_dim_lib_dynamical = [
@@ -101,8 +101,8 @@ for l in range(len(inputs_lib_dynamical)):
             batch_size=batch_size,
             train_loader=train_loader,
             num_slices_train=inputs_train.shape[0],
-            inputs_val=inputs_test,
-            targets_val=targets_test,
+            inputs_val=inputs_val,
+            targets_val=targets_val,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,

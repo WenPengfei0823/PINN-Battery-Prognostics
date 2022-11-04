@@ -11,13 +11,14 @@ import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+settings = torch.load('..\\Settings\\settings_RUL_CaseC.pth')
 seq_len = 1
 perc_val = 0.2
-num_rounds = 5
-batch_size = 1024
-num_epoch = 2000
-num_layers = [6]
-num_neurons = [128]
+num_rounds = settings['num_rounds']
+batch_size = settings['batch_size']
+num_epoch = settings['num_epoch']
+num_layers = settings['num_layers']
+num_neurons = settings['num_neurons']
 inputs_lib_dynamical = [
     's_norm',
     't_norm',
@@ -58,15 +59,19 @@ addr = '..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
 # params_PDE_all = np.zeros((data.num_cells, 3))
 
-metric_mean = dict()
-metric_std = dict()
-metric_mean['train'] = np.zeros((len(inputs_lib_dynamical), 1))
-metric_mean['val'] = np.zeros((len(inputs_lib_dynamical), 1))
-metric_mean['test'] = np.zeros((len(inputs_lib_dynamical), 1))
-metric_std['train'] = np.zeros((len(inputs_lib_dynamical), 1))
-metric_std['val'] = np.zeros((len(inputs_lib_dynamical), 1))
-metric_std['test'] = np.zeros((len(inputs_lib_dynamical), 1))
-for l in range(len(inputs_lib_dynamical)):
+# metric_mean = dict()
+# metric_std = dict()
+# metric_mean['train'] = np.zeros((len(inputs_lib_dynamical), 1))
+# metric_mean['val'] = np.zeros((len(inputs_lib_dynamical), 1))
+# metric_mean['test'] = np.zeros((len(inputs_lib_dynamical), 1))
+# metric_std['train'] = np.zeros((len(inputs_lib_dynamical), 1))
+# metric_std['val'] = np.zeros((len(inputs_lib_dynamical), 1))
+# metric_std['test'] = np.zeros((len(inputs_lib_dynamical), 1))
+
+metric_mean = torch.load('..\\..\\Results\\2 DeepHPM Dependency\\metric_mean_RUL_CaseC_DeepHPM_Sum.pth')
+metric_std = torch.load('..\\..\\Results\\2 DeepHPM Dependency\\metric_std_RUL_CaseC_DeepHPM_Sum..pth')
+
+for l in range(7, len(inputs_lib_dynamical)):
     inputs_dynamical, inputs_dim_dynamical = inputs_lib_dynamical[l], inputs_dim_lib_dynamical[l]
     layers = num_layers[0] * [num_neurons[0]]
     np.random.seed(1234)
@@ -124,15 +129,15 @@ for l in range(len(inputs_lib_dynamical)):
         criterion = func.My_loss(mode='Sum')
 
         params = ([p for p in model.parameters()])
-        optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
+        optimizer = optim.Adam(params, lr=settings['lr'])
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=settings['step_size'], gamma=settings['gamma'])
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,
             train_loader=train_loader,
             num_slices_train=inputs_train.shape[0],
-            inputs_val=inputs_test,
-            targets_val=targets_test,
+            inputs_val=inputs_val,
+            targets_val=targets_val,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
@@ -157,13 +162,13 @@ for l in range(len(inputs_lib_dynamical)):
         metric_rounds['val'][round] = RMSE_val.detach().cpu().numpy()
         metric_rounds['test'][round] = RMSE_test.detach().cpu().numpy()
 
-        metric_mean['train'][l] = np.mean(metric_rounds['train'])
-        metric_mean['val'][l] = np.mean(metric_rounds['val'])
-        metric_mean['test'][l] = np.mean(metric_rounds['test'])
-        metric_std['train'][l] = np.std(metric_rounds['train'])
-        metric_std['val'][l] = np.std(metric_rounds['val'])
-        metric_std['test'][l] = np.std(metric_rounds['test'])
-        torch.save(metric_mean, '..\\..\\Results\\2 DeepHPM Dependency\\metric_mean_RUL_CaseC_DeepHPM_Sum.pth')
-        torch.save(metric_std, '..\\..\\Results\\2 DeepHPM Dependency\\metric_std_RUL_CaseC_DeepHPM_Sum..pth')
+    metric_mean['train'][l] = np.mean(metric_rounds['train'])
+    metric_mean['val'][l] = np.mean(metric_rounds['val'])
+    metric_mean['test'][l] = np.mean(metric_rounds['test'])
+    metric_std['train'][l] = np.std(metric_rounds['train'])
+    metric_std['val'][l] = np.std(metric_rounds['val'])
+    metric_std['test'][l] = np.std(metric_rounds['test'])
+    torch.save(metric_mean, '..\\..\\Results\\2 DeepHPM Dependency\\metric_mean_RUL_CaseC_DeepHPM_Sum.pth')
+    torch.save(metric_std, '..\\..\\Results\\2 DeepHPM Dependency\\metric_std_RUL_CaseC_DeepHPM_Sum.pth')
 
 pass

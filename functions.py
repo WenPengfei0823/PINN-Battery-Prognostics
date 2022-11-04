@@ -535,7 +535,7 @@ class VerhulstPINN(nn.Module):
 
         F = U_t - G
         F_t = torch.autograd.grad(
-            F, t_norm,
+            F, t,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -593,7 +593,7 @@ class DeepHPMNN(nn.Module):
 
         grad_outputs = torch.ones_like(U)
         U_t = torch.autograd.grad(
-            U_norm, t_norm,
+            U, t,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -601,7 +601,7 @@ class DeepHPMNN(nn.Module):
         )[0]
 
         U_s = torch.autograd.grad(
-            U_norm, s_norm,
+            U, s,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,
@@ -612,7 +612,7 @@ class DeepHPMNN(nn.Module):
 
         F = U_t - G
         F_t = torch.autograd.grad(
-            F, t_norm,
+            F, t,
             grad_outputs=grad_outputs,
             create_graph=True,
             retain_graph=True,

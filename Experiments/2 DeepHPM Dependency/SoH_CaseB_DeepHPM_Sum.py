@@ -11,13 +11,14 @@ import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+settings = torch.load('..\\Settings\\settings_SoH_CaseB.pth')
 seq_len = 1
 perc_val = 0.2
-num_rounds = 5
-batch_size = 256
-num_epoch = 1000
-num_layers = [2]
-num_neurons = [64]
+num_rounds = settings['num_rounds']
+batch_size = settings['batch_size']
+num_epoch = settings['num_epoch']
+num_layers = settings['num_layers']
+num_neurons = settings['num_neurons']
 inputs_lib_dynamical = [
     's_norm',
     't_norm',
@@ -122,15 +123,15 @@ for l in range(len(inputs_lib_dynamical)):
         criterion = func.My_loss(mode='Sum')
 
         params = ([p for p in model.parameters()])
-        optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
+        optimizer = optim.Adam(params, lr=settings['lr'])
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=settings['step_size'], gamma=settings['gamma'])
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,
             train_loader=train_loader,
             num_slices_train=inputs_train.shape[0],
-            inputs_val=inputs_test,
-            targets_val=targets_test,
+            inputs_val=inputs_val,
+            targets_val=targets_val,
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
