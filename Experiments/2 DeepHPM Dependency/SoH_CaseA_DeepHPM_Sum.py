@@ -1,12 +1,7 @@
 import numpy as np
-import scipy.io
 import torch
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from torch import nn, optim
-from torch.utils.data import DataLoader, Dataset
+from torch import optim
+from torch.utils.data import DataLoader
 import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,7 +52,6 @@ inputs_dim_lib_dynamical = [
 
 addr = '..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
-# params_PDE_all = np.zeros((data.num_cells, 3))
 
 metric_mean = dict()
 metric_std = dict()
@@ -171,13 +165,4 @@ for l in range(len(inputs_lib_dynamical)):
         torch.save(metric_mean, '..\\..\\Results\\2 DeepHPM Dependency\\metric_mean_SoH_CaseA_DeepHPM_Sum.pth')
         torch.save(metric_std, '..\\..\\Results\\2 DeepHPM Dependency\\metric_std_SoH_CaseA_DeepHPM_Sum.pth')
 
-inputs_all_ndarray_flt = np.concatenate(data.inputs_units)
-inputs_all_tensor = torch.from_numpy(inputs_all_ndarray_flt).contiguous().view((-1, seq_len, inputs_dim)).type(torch.float32).to(device)
-U_pred_all, _, _ = model(inputs=inputs_all_tensor)
-U_pred_all_ndarray_flt = U_pred_all.contiguous().view((-1, 1)).detach().cpu().numpy()
-# U_t_pred_all_ndarray_flt = model.U_t.contiguous().view((-1, 1)).detach().cpu().numpy()
-CapacityNNOutputs = data.data
-CapacityNNOutputs['Features_mov_Flt'] = np.concatenate((
-    CapacityNNOutputs['Features_mov_Flt'], U_pred_all_ndarray_flt), axis=1)
-scipy.io.savemat('..\\..\\Results\\2 DeepHPM Dependency\\SeversonBattery_CaseA_DeepHPM_Sum..mat', CapacityNNOutputs)
 pass

@@ -1,14 +1,9 @@
 import numpy as np
 import scipy.io
 import torch
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from torch import nn, optim
-from torch.utils.data import DataLoader, Dataset
-# from torch.autograd.gradcheck import zero_gradients
-import math
+from torch import nn
+from torch.utils.data import Dataset
 
 
 class SeversonBattery:

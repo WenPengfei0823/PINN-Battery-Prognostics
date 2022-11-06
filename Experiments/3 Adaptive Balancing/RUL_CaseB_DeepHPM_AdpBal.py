@@ -1,12 +1,7 @@
 import numpy as np
-import scipy.io
 import torch
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from torch import nn, optim
-from torch.utils.data import DataLoader, Dataset
+from torch import optim
+from torch.utils.data import DataLoader
 import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -24,7 +19,6 @@ inputs_dim_lib_dynamical = settings['inputs_dim_lib_dynamical']
 
 addr = '..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
-# params_PDE_all = np.zeros((data.num_cells, 3))
 
 metric_mean = dict()
 metric_std = dict()

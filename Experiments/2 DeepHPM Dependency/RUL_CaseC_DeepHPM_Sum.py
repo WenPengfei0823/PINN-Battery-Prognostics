@@ -1,12 +1,8 @@
 import numpy as np
-import scipy.io
 import torch
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from torch import nn, optim
-from torch.utils.data import DataLoader, Dataset
+from torch import optim
+from torch.utils.data import DataLoader
 import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,21 +53,16 @@ inputs_dim_lib_dynamical = [
 
 addr = '..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
-# params_PDE_all = np.zeros((data.num_cells, 3))
 
-# metric_mean = dict()
-# metric_std = dict()
-# metric_mean['train'] = np.zeros((len(inputs_lib_dynamical), 1))
-# metric_mean['val'] = np.zeros((len(inputs_lib_dynamical), 1))
-# metric_mean['test'] = np.zeros((len(inputs_lib_dynamical), 1))
-# metric_std['train'] = np.zeros((len(inputs_lib_dynamical), 1))
-# metric_std['val'] = np.zeros((len(inputs_lib_dynamical), 1))
-# metric_std['test'] = np.zeros((len(inputs_lib_dynamical), 1))
-
-metric_mean = torch.load('..\\..\\Results\\2 DeepHPM Dependency\\metric_mean_RUL_CaseC_DeepHPM_Sum.pth')
-metric_std = torch.load('..\\..\\Results\\2 DeepHPM Dependency\\metric_std_RUL_CaseC_DeepHPM_Sum..pth')
-
-for l in range(7, len(inputs_lib_dynamical)):
+metric_mean = dict()
+metric_std = dict()
+metric_mean['train'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_mean['val'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_mean['test'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_std['train'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_std['val'] = np.zeros((len(inputs_lib_dynamical), 1))
+metric_std['test'] = np.zeros((len(inputs_lib_dynamical), 1))
+for l in range(len(inputs_lib_dynamical)):
     inputs_dynamical, inputs_dim_dynamical = inputs_lib_dynamical[l], inputs_dim_lib_dynamical[l]
     layers = num_layers[0] * [num_neurons[0]]
     np.random.seed(1234)

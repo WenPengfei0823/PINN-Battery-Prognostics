@@ -1,34 +1,24 @@
 import numpy as np
-import scipy.io
 import torch
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from torch import nn, optim
-from torch.utils.data import DataLoader, Dataset
+from torch import optim
+from torch.utils.data import DataLoader
 import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+settings = torch.load('..\\Settings\\settings_RUL_CaseA.pth')
 seq_len = 1
 perc_val = 0.2
 num_rounds = 1
-batch_size = 1024
-num_epoch = 2000
-num_layers = [2]
-num_neurons = [128]
-inputs_lib_dynamical = [
-    's_norm, t_norm, U_norm'
-]
-
-inputs_dim_lib_dynamical = [
-    'inputs_dim + 1'
-]
+batch_size = settings['batch_size']
+num_epoch = settings['num_epoch']
+num_layers = settings['num_layers']
+num_neurons = settings['num_neurons']
+inputs_lib_dynamical = settings['inputs_lib_dynamical']
+inputs_dim_lib_dynamical = settings['inputs_dim_lib_dynamical']
 
 addr = '..\\..\\..\\SeversonBattery.mat'
 data = func.SeversonBattery(addr, seq_len=seq_len)
-# params_PDE_all = np.zeros((data.num_cells, 3))
 
 metric_mean = dict()
 metric_std = dict()
@@ -94,8 +84,8 @@ for l in range(len(inputs_lib_dynamical)):
         criterion = func.My_loss(mode='AdpBal')
 
         params = ([p for p in model.parameters()] + [log_sigma_u] + [log_sigma_f] + [log_sigma_f_t])
-        optimizer = optim.Adam(params, lr=1e-3)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50000, gamma=0.1)
+        optimizer = optim.Adam(params, lr=settings['lr'])
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=settings['step_size'], gamma=settings['gamma'])
         model, results_epoch = func.train(
             num_epoch=num_epoch,
             batch_size=batch_size,
