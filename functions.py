@@ -300,7 +300,6 @@ class Neural_Net(nn.Module):
             self.layers.append(nn.Tanh())
         elif activation == 'Sin':
             self.layers.append(Sin())
-        # self.layers.append(nn.BatchNorm1d(num_features=layers[0]))
         self.layers.append(nn.Dropout(p=0.2))
 
         for l in range(len(layers) - 1):
@@ -311,7 +310,6 @@ class Neural_Net(nn.Module):
                 self.layers.append(nn.Tanh())
             elif activation == 'Sin':
                 self.layers.append(Sin())
-            # self.layers.append(nn.BatchNorm1d(num_features=layers[l + 1]))
             self.layers.append(nn.Dropout(p=0.2))
 
         self.layers.append(nn.Linear(in_features=layers[l + 1], out_features=outputs_dim))
