@@ -8,6 +8,9 @@ For Prognostics and Health Management (PHM) of Lithium-ion (Li-ion) batteries, m
 
 ## Citation
 
+> ```
+> ```
+>
 > @article{Wen2023_PINN,
 >    author = {Wen, Pengfei and Ye, Zhi-Sheng and Li, Yong and Chen, Shaowei and Zhao, Shuai},
 >
@@ -22,3 +25,5 @@ For Prognostics and Health Management (PHM) of Lithium-ion (Li-ion) batteries, m
 >    doi = {},
 >
 > }
+>
+> ```
