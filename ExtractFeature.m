@@ -23,26 +23,8 @@ slope = zeros(num_cycles, 1);
 intercept = zeros(num_cycles, 1);
 
 for k = 1:num_cycles,
-%     idx_discharge = (batch_combined_i.cycles(k).I < 0);
-%     if isempty(batch_combined_i.cycles(k).discharge_dQdV),
-%         batch_combined_i.cycles(k).discharge_dQdV = ...
-%             diff(batch_combined_i.cycles(k).Qdlin) ./ ...
-%             diff(batch_combined_i.Vdlin);
-%     end
-%     
-%     idx_dQdV = (batch_combined_i.Vdlin > 2.7) & (batch_combined_i.Vdlin < 3.3);
-%     
-%     cycle_bench = 10;
-%     dQdV_max(k) = max(batch_combined_i.cycles(k).Qdlin - ...
-%         batch_combined_i.cycles(cycle_bench).Qdlin);
-%     dQdV_min(k) = min(batch_combined_i.cycles(k).Qdlin - ...
-%         batch_combined_i.cycles(cycle_bench).Qdlin);
-%     dQdV_var(k) = var(batch_combined_i.cycles(k).Qdlin - ...
-%         batch_combined_i.cycles(cycle_bench).Qdlin);
-% %     dQdV_ske(k) = skewness(batch_combined_i.cycles(k).Qdlin - ...
-% %         batch_combined_i.cycles(cycle_bench).Qdlin);
-% %     dQdV_kur(k) = kurtosis(batch_combined_i.cycles(k).Qdlin - ...
-% %         batch_combined_i.cycles(cycle_bench).Qdlin);
+    
+    idx_dQdV = (batch_combined_i.Vdlin > 2.7) & (batch_combined_i.Vdlin < 3.3);
 
 %%%%%%%%%%%%%%%%%%%%%%%%% Kong et al. 2021 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
     windowSize = 10;
@@ -62,52 +44,19 @@ for k = 1:num_cycles,
             X = [ones(idx_thd_dQ - idx_peak_dQ + 1, 1), x];
             p = pinv(X' * X) * X' * Y;
             slope(k) = p(1);
-            intercept(k) = p(2);
-            
+            intercept(k) = p(2);            
             break
         end
-    end
-            
+    end            
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-%     dQdV_max(k) = max(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
-%     dQdV_min(k) = min(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
-%     dQdV_var(k) = var(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
-%     dQdV_ske(k) = skewness(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
-%     dQdV_kur(k) = kurtosis(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
+    dQdV_max(k) = max(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
+    dQdV_min(k) = min(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
+    dQdV_var(k) = var(batch_combined_i.cycles(k).discharge_dQdV(idx_dQdV));
     
-%     V_E(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).V(idx_discharge), 'Energy');
-%     T_E(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).T(idx_discharge), 'Energy');
-%     
-%     V_FI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).V(idx_discharge), 'Fluctuation');
-%     T_FI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).T(idx_discharge), 'Fluctuation');
-%     
-%     V_CI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).V(idx_discharge), 'Curvature');
-%     T_CI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).T(idx_discharge), 'Curvature');
-%     
-% %     V_CCI = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-% %         batch_combined_i.cycles(k).V(idx_discharge), 'Concave');
-% %     T_CCI = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-% %         batch_combined_i.cycles(k).T(idx_discharge), 'Concave');
-%     
-%     V_SI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).V(idx_discharge), 'Skewness');
-%     T_SI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).T(idx_discharge), 'Skewness');
-%     
-%     V_KI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).V(idx_discharge), 'Kurtosis');
-%     T_KI(k) = ComputeFeature(batch_combined_i.cycles(k).t(idx_discharge), ...
-%         batch_combined_i.cycles(k).T(idx_discharge), 'Kurtosis');
 end
-% Features_i = [V_E, T_E, V_FI, T_FI, V_CI, T_CI, V_SI, T_SI, V_KI, T_KI];
-% Features_i = [dQdV_max, dQdV_min, dQdV_var, dQdV_ske, dQdV_kur];
-% Features_i = [dQdV_max, dQdV_min, dQdV_var];
-Features_i = [slope, intercept, batch_combined_i.summary.Tavg];
+
+Features_i = [slope, intercept, batch_combined_i.summary.Tavg, ...
+    batch_combined_i.summary.IR, batch_combined_i.summary.chargetime, ...
+    dQdV_max, dQdV_min, dQdV_var];
 end
