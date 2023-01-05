@@ -254,29 +254,8 @@ def inverse_standardize_tensor(data_norm, mean, std):
     return data
 
 
-def fwd_gradients(outputs, inputs):
-    grad_outputs = torch.ones_like(outputs).requires_grad_(True)
-    g = torch.autograd.grad(
-        outputs, inputs,
-        grad_outputs=grad_outputs,
-        create_graph=True,
-        retain_graph=True,
-        only_inputs=True
-    )[0]
-    grad_outputs_g = torch.ones_like(g)
-    doutputs_dinputs = torch.autograd.grad(
-        g, grad_outputs,
-        grad_outputs=grad_outputs_g,
-        create_graph=True,
-        retain_graph=True,
-        only_inputs=True
-    )[0]
-    return doutputs_dinputs
-
-
 def Verhulst(y, r, K, C):
     return r * (y - C) * (1 - (y - C) / (K - C))
-
 
 
 class Sin(nn.Module):
@@ -658,9 +637,6 @@ class My_loss(nn.Module):
         self.loss_F = loss_F
         self.loss_F_t = loss_F_t
         return loss
-
-
-
 
 
 def train(num_epoch, batch_size, train_loader, num_slices_train, inputs_val, targets_val,
