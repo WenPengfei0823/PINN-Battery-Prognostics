@@ -6,7 +6,7 @@ import functions as func
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-settings = torch.load('..\\Settings\\settings_SoH_CaseA.pth')
+settings = torch.load('..\\..\\Settings\\settings_SoH_CaseA.pth')
 seq_len = 1
 perc_val = 0.2
 num_rounds = 1

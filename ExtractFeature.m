@@ -1,23 +1,9 @@
 function Features_i = ExtractFeatures(batch_combined_i)
 num_cycles = length(batch_combined_i.cycles);
-V_E = zeros(num_cycles, 1);
-T_E = zeros(num_cycles, 1);
-V_FI = zeros(num_cycles, 1);
-T_FI = zeros(num_cycles, 1);
-V_CI = zeros(num_cycles, 1);
-T_CI = zeros(num_cycles, 1);
-V_CCI = zeros(num_cycles, 1);
-T_CCI = zeros(num_cycles, 1);
-V_SI = zeros(num_cycles, 1);
-T_SI = zeros(num_cycles, 1);
-V_KI = zeros(num_cycles, 1);
-T_KI = zeros(num_cycles, 1);
 
 dQdV_max = zeros(num_cycles, 1);
 dQdV_min = zeros(num_cycles, 1);
 dQdV_var = zeros(num_cycles, 1);
-dQdV_ske = zeros(num_cycles, 1);
-dQdV_kur = zeros(num_cycles, 1);
 
 slope = zeros(num_cycles, 1);
 intercept = zeros(num_cycles, 1);
