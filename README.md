@@ -14,13 +14,13 @@ For Prognostics and Health Management (PHM) of Lithium-ion (Li-ion) batteries, m
 
 > ```
 > @article{Wen2023_PINN,
-> author = {Wen, Pengfei and Ye, Zhi-Sheng and Li, Yong and Chen, Shaowei and Zhao, Shuai},
-> title = {Fusing Models for Prognostics and Health Management of Lithium-Ion Batteries Based on Physics-Informed Neural Networks},
-> journal = {arXiv Preprint},
+> author = {Wen, Pengfei and Ye, Zhi-Sheng and Li, Yong and Chen, Shaowei and Xie, Pu and Zhao, Shuai},
+> title = {Physics-informed neural networks for prognostics and health management of lithium-ion batteries},
+> journal = {IEEE Transactions on Intelligent Vehicles},
 > year = {2023},
 > type = {Journal Article},
-> pages = {2301.00776},
-> doi = {10.48550/ARXIV.2301.00776}
+> pages = {to be published},
+> doi = {10.1109/TIV.2023.3315548}
 > }
 > ```
 
