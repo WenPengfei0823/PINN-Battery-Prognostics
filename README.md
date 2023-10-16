@@ -23,3 +23,11 @@ For Prognostics and Health Management (PHM) of Lithium-ion (Li-ion) batteries, m
 > doi = {10.48550/ARXIV.2301.00776}
 > }
 > ```
+
+
+## Instruction
+
+1. Run "LoadData.m" to load data.
+2. Run "ProcessData.m" to process data.
+3. Run "ExtractFeature.m" to extract the involved features.
+4. Then the users can run the codes in the folders "Experiments" to replicate our experiments.
