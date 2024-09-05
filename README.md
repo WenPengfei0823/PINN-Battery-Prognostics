@@ -17,9 +17,11 @@ For Prognostics and Health Management (PHM) of Lithium-ion (Li-ion) batteries, m
 > author = {Wen, Pengfei and Ye, Zhi-Sheng and Li, Yong and Chen, Shaowei and Xie, Pu and Zhao, Shuai},
 > title = {Physics-informed neural networks for prognostics and health management of lithium-ion batteries},
 > journal = {IEEE Transactions on Intelligent Vehicles},
-> year = {2023},
+> year = {2024},
 > type = {Journal Article},
-> pages = {to be published},
+> volume = {9},
+> number = {1},
+> pages = {2276-2289},
 > doi = {10.1109/TIV.2023.3315548}
 > }
 > ```
